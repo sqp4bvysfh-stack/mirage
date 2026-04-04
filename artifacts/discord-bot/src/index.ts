@@ -10,6 +10,7 @@ import type { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.j
 import { pingCommand } from "./commands/ping.js";
 import { aideCommand } from "./commands/aide.js";
 import { infoCommand } from "./commands/info.js";
+import { onGuildMemberAdd } from "./events/guildMemberAdd.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -25,7 +26,10 @@ export interface Command {
 const commands: Command[] = [pingCommand, aideCommand, infoCommand];
 
 const client = new Client({
-  intents: [GatewayIntentBits.Guilds],
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+  ],
 });
 
 const commandCollection = new Collection<string, Command>();
@@ -36,7 +40,6 @@ for (const command of commands) {
 client.once(Events.ClientReady, async (readyClient) => {
   console.log(`✅ Bot connecté en tant que ${readyClient.user.tag}`);
 
-  // Enregistrer les slash commands automatiquement
   const rest = new REST().setToken(token!);
   try {
     const commandData = commands.map((c) => c.data.toJSON());
@@ -48,6 +51,8 @@ client.once(Events.ClientReady, async (readyClient) => {
     console.error("Erreur lors de l'enregistrement des commandes:", err);
   }
 });
+
+client.on(Events.GuildMemberAdd, onGuildMemberAdd);
 
 client.on(Events.InteractionCreate, async (interaction) => {
   if (!interaction.isChatInputCommand()) return;
