@@ -1,6 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
 import type { ChatInputCommandInteraction } from "discord.js";
-import type { Command } from "../index.js";
+import type { Command } from "../types.js";
 
 export const aideCommand: Command = {
   data: new SlashCommandBuilder()
@@ -20,6 +20,6 @@ export const aideCommand: Command = {
       .setFooter({ text: "Bot Discord • Replit" })
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed], ephemeral: true });
+    await interaction.reply({ embeds: [embed], flags: 64 });
   },
 };

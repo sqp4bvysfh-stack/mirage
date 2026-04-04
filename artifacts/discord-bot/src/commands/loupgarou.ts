@@ -4,7 +4,7 @@ import {
   userMention,
 } from "discord.js";
 import type { ChatInputCommandInteraction, User } from "discord.js";
-import type { Command } from "../index.js";
+import type { Command } from "../types.js";
 
 const ROLES = {
   LOUP_GAROU: {
