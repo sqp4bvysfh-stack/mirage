@@ -1,6 +1,8 @@
-import type { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.js";
+import type { Message } from "discord.js";
 
 export interface Command {
-  data: Pick<SlashCommandBuilder, "name" | "toJSON">;
-  execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
+  name: string;
+  description: string;
+  usage?: string;
+  execute: (message: Message, args: string[]) => Promise<void>;
 }

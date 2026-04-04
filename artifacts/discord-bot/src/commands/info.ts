@@ -1,19 +1,15 @@
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js";
-import type { ChatInputCommandInteraction } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 
 export const infoCommand: Command = {
-  data: new SlashCommandBuilder()
-    .setName("info")
-    .setDescription("Affiche les informations du serveur."),
+  name: "info",
+  description: "Affiche les informations du serveur.",
+  usage: "*info",
 
-  async execute(interaction: ChatInputCommandInteraction) {
-    const guild = interaction.guild;
+  async execute(message) {
+    const guild = message.guild;
     if (!guild) {
-      await interaction.reply({
-        content: "Cette commande doit être utilisée dans un serveur.",
-        ephemeral: true,
-      });
+      await message.reply("Cette commande doit être utilisée dans un serveur.");
       return;
     }
 
@@ -24,13 +20,17 @@ export const infoCommand: Command = {
       .addFields(
         { name: "👑 Propriétaire", value: `<@${guild.ownerId}>`, inline: true },
         { name: "👥 Membres", value: `${guild.memberCount}`, inline: true },
-        { name: "📅 Créé le", value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D>`, inline: true },
+        {
+          name: "📅 Créé le",
+          value: `<t:${Math.floor(guild.createdTimestamp / 1000)}:D>`,
+          inline: true,
+        },
         { name: "💬 Salons", value: `${guild.channels.cache.size}`, inline: true },
-        { name: "🎭 Rôles", value: `${guild.roles.cache.size}`, inline: true },
+        { name: "🎭 Rôles", value: `${guild.roles.cache.size}`, inline: true }
       )
       .setFooter({ text: `ID: ${guild.id}` })
       .setTimestamp();
 
-    await interaction.reply({ embeds: [embed] });
+    await message.reply({ embeds: [embed] });
   },
 };

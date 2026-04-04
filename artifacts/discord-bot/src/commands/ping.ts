@@ -1,19 +1,25 @@
-import { SlashCommandBuilder } from "discord.js";
-import type { ChatInputCommandInteraction } from "discord.js";
+import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 
 export const pingCommand: Command = {
-  data: new SlashCommandBuilder()
-    .setName("ping")
-    .setDescription("Vérifie si le bot est en ligne et mesure la latence."),
+  name: "ping",
+  description: "Vérifie si le bot est en ligne et mesure la latence.",
+  usage: "*ping",
 
-  async execute(interaction: ChatInputCommandInteraction) {
+  async execute(message) {
     const before = Date.now();
-    await interaction.reply({ content: "🏓 Calcul en cours..." });
+    const sent = await message.reply("🏓 Calcul en cours...");
     const latency = Date.now() - before;
-    const apiLatency = Math.round(interaction.client.ws.ping);
-    await interaction.editReply(
-      `🏓 **Pong !**\n⏱️ Latence : **${latency}ms**\n📡 API : **${apiLatency}ms**`
-    );
+    const apiLatency = Math.round(message.client.ws.ping);
+
+    const embed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("🏓 Pong !")
+      .addFields(
+        { name: "⏱️ Latence", value: `**${latency}ms**`, inline: true },
+        { name: "📡 API Discord", value: `**${apiLatency}ms**`, inline: true }
+      );
+
+    await sent.edit({ content: "", embeds: [embed] });
   },
 };

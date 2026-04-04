@@ -1,9 +1,5 @@
-import {
-  SlashCommandBuilder,
-  EmbedBuilder,
-  userMention,
-} from "discord.js";
-import type { ChatInputCommandInteraction, User } from "discord.js";
+import { EmbedBuilder, userMention } from "discord.js";
+import type { User } from "discord.js";
 import type { Command } from "../types.js";
 
 const ROLES = {
@@ -53,20 +49,13 @@ const ROLES = {
 
 function getRoleDistribution(count: number): string[] {
   const roles: string[] = [];
-
-  if (count < 3) return [];
-
-  // Nombre de loups
-  const nbLoups = count <= 6 ? 1 : count <= 9 ? 2 : count <= 12 ? 3 : 4;
+  const nbLoups = count <= 6 ? 1 : count <= 9 ? 2 : count <= 12 ? 3 : count <= 16 ? 4 : 5;
 
   for (let i = 0; i < nbLoups; i++) roles.push("LOUP_GAROU");
   roles.push("VOYANTE");
-
   if (count >= 5) roles.push("SORCIERE");
   if (count >= 7) roles.push("CHASSEUR");
   if (count >= 10) roles.push("CUPIDON");
-
-  // Compléter avec des villageois
   while (roles.length < count) roles.push("VILLAGEOIS");
 
   return roles;
@@ -81,45 +70,32 @@ function shuffle<T>(array: T[]): T[] {
   return arr;
 }
 
-// Crée un SlashCommandBuilder avec jusqu'à 15 joueurs
-const commandBuilder = new SlashCommandBuilder()
-  .setName("loupgarou")
-  .setDescription("Lance une partie de Loup-Garou et envoie les rôles en MP !");
-
-for (let i = 1; i <= 15; i++) {
-  commandBuilder.addUserOption((option) =>
-    option
-      .setName(`joueur${i}`)
-      .setDescription(`Joueur ${i}`)
-      .setRequired(i <= 3)
-  );
-}
-
 export const loupgarouCommand: Command = {
-  data: commandBuilder,
+  name: "loupgarou",
+  description: "Lance une partie de Loup-Garou et envoie les rôles en MP.",
+  usage: "*loupgarou @j1 @j2 @j3 ...",
 
-  async execute(interaction: ChatInputCommandInteraction) {
-    await interaction.deferReply();
+  async execute(message) {
+    // Récupérer les membres mentionnés (sans les bots)
+    const players: User[] = message.mentions.users.filter((u) => !u.bot).map((u) => u);
 
-    // Récupérer tous les joueurs mentionnés
-    const players: User[] = [];
-    for (let i = 1; i <= 15; i++) {
-      const user = interaction.options.getUser(`joueur${i}`);
-      if (user && !user.bot) players.push(user);
-    }
-
-    // Dédoublonner
-    const uniquePlayers = [...new Map(players.map((u) => [u.id, u])).values()];
-
-    if (uniquePlayers.length < 3) {
-      await interaction.editReply("❌ Il faut au moins **3 joueurs** pour lancer une partie !");
+    if (players.length < 3) {
+      await message.reply(
+        "❌ Il faut mentionner au moins **3 joueurs** !\nEx : `*loupgarou @j1 @j2 @j3`"
+      );
       return;
     }
 
-    const roleKeys = shuffle(getRoleDistribution(uniquePlayers.length));
-    const assignments: { user: User; roleKey: string }[] = uniquePlayers.map(
-      (user, i) => ({ user, roleKey: roleKeys[i] })
-    );
+    if (players.length > 20) {
+      await message.reply("❌ Maximum **20 joueurs** par partie.");
+      return;
+    }
+
+    const roleKeys = shuffle(getRoleDistribution(players.length));
+    const assignments: { user: User; roleKey: string }[] = players.map((user, i) => ({
+      user,
+      roleKey: roleKeys[i],
+    }));
 
     // Envoyer les rôles en MP
     const results: string[] = [];
@@ -131,28 +107,27 @@ export const loupgarouCommand: Command = {
         .setDescription(role.description)
         .addFields({
           name: "📍 Serveur",
-          value: interaction.guild?.name ?? "Inconnu",
+          value: message.guild?.name ?? "Inconnu",
           inline: true,
         })
-        .setFooter({ text: "Bonne chance... et méfie-toi des loups 🐺" })
+        .setFooter({ text: "Bonne chance… et méfie-toi des loups 🐺" })
         .setTimestamp();
 
       try {
         await user.send({ embeds: [dmEmbed] });
-        results.push(`✅ ${userMention(user.id)} — rôle envoyé en MP`);
+        results.push(`✅ ${userMention(user.id)} — MP envoyé`);
       } catch {
         results.push(`⚠️ ${userMention(user.id)} — MP impossible (MP fermés ?)`);
       }
     }
 
-    // Compter les loups pour l'annonce publique
     const nbLoups = assignments.filter((a) => a.roleKey === "LOUP_GAROU").length;
 
     const summaryEmbed = new EmbedBuilder()
       .setColor(0x2c2f33)
       .setTitle("🌕 La nuit tombe sur le village…")
       .setDescription(
-        `Une partie de **Loup-Garou** vient de commencer avec **${uniquePlayers.length} joueurs** !\n` +
+        `Partie de **Loup-Garou** lancée avec **${players.length} joueurs** !\n` +
           `Chaque joueur a reçu son rôle en message privé.\n\n` +
           `🐺 Il y a **${nbLoups} loup${nbLoups > 1 ? "s" : ""}** parmi vous…`
       )
@@ -160,6 +135,6 @@ export const loupgarouCommand: Command = {
       .setFooter({ text: "Que le meilleur camp gagne !" })
       .setTimestamp();
 
-    await interaction.editReply({ embeds: [summaryEmbed] });
+    await message.reply({ embeds: [summaryEmbed] });
   },
 };
