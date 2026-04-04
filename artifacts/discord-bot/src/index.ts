@@ -1,3 +1,4 @@
+import { createServer } from "node:http";
 import { Client, GatewayIntentBits, Collection, Events, REST, Routes } from "discord.js";
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
@@ -29,22 +30,33 @@ const client = new Client({
   ],
 });
 
+// Serveur HTTP de statut (nécessaire pour le déploiement Replit)
+const PORT = process.env.BOT_PORT ? parseInt(process.env.BOT_PORT) : 3000;
+const httpServer = createServer((req, res) => {
+  const isOnline = client.isReady();
+  const status = {
+    status: isOnline ? "online" : "connecting",
+    bot: client.user?.tag ?? null,
+    guilds: client.guilds.cache.size,
+    commands: [...commands.keys()].map((k) => PREFIX + k),
+    uptime: client.uptime ?? 0,
+  };
+  res.writeHead(200, { "Content-Type": "application/json" });
+  res.end(JSON.stringify(status));
+});
+httpServer.listen(PORT, () => {
+  console.log(`🌐 Serveur statut en ligne sur le port ${PORT}`);
+});
+
 client.once(Events.ClientReady, (readyClient) => {
   console.log(`✅ Bot connecté en tant que ${readyClient.user.tag}`);
   console.log(`📡 Serveurs : ${readyClient.guilds.cache.size}`);
   console.log(`📋 Commandes : ${[...commands.keys()].map((k) => PREFIX + k).join(", ")}`);
 
-  // Supprimer les slash commands existantes
   const rest = new REST().setToken(token!);
-  rest
-    .put(Routes.applicationCommands(readyClient.user.id), { body: [] })
-    .then(() => console.log("🗑️ Slash commands supprimées."))
-    .catch(() => {});
-
+  rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] }).catch(() => {});
   for (const guild of readyClient.guilds.cache.values()) {
-    rest
-      .put(Routes.applicationGuildCommands(readyClient.user.id, guild.id), { body: [] })
-      .catch(() => {});
+    rest.put(Routes.applicationGuildCommands(readyClient.user.id, guild.id), { body: [] }).catch(() => {});
   }
 });
 
