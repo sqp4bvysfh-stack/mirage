@@ -19,6 +19,11 @@ export const aideCommand: Command = {
           name: "`*loupgarou @j1 @j2 @j3 ...`",
           value: "Lance une partie de Loup-Garou et envoie les rôles en MP (3 à 20 joueurs).",
           inline: false,
+        },
+        {
+          name: "`*roles`",
+          value: "Affiche tous les rôles du Loup-Garou avec leurs descriptions.",
+          inline: false,
         }
       )
       .setFooter({ text: "Bot Discord • Replit" })

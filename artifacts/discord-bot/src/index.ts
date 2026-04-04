@@ -5,6 +5,7 @@ import { pingCommand } from "./commands/ping.js";
 import { aideCommand } from "./commands/aide.js";
 import { infoCommand } from "./commands/info.js";
 import { loupgarouCommand } from "./commands/loupgarou.js";
+import { rolesCommand } from "./commands/roles.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -15,7 +16,7 @@ if (!token) {
 export const PREFIX = "*";
 
 const commands = new Collection<string, Command>();
-for (const cmd of [pingCommand, aideCommand, infoCommand, loupgarouCommand]) {
+for (const cmd of [pingCommand, aideCommand, infoCommand, loupgarouCommand, rolesCommand]) {
   commands.set(cmd.name, cmd);
 }
 
