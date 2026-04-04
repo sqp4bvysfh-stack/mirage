@@ -25,11 +25,7 @@ export interface Command {
 const commands: Command[] = [pingCommand, aideCommand, infoCommand];
 
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-  ],
+  intents: [GatewayIntentBits.Guilds],
 });
 
 const commandCollection = new Collection<string, Command>();
