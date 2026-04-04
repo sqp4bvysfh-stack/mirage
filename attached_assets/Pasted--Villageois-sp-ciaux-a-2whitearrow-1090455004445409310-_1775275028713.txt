@@ -1,0 +1,29 @@
+# 🧑‍🌾 Villageois spéciaux 
+<a:2whitearrow:1090455004445409310> **Villageois** doivent tuer tout les loups
+
+<:kawaiiShinyStar:737449316280565821> **La Voyante** pilier du jeu, chaque nuit elle peut voir le rôle d’un joueur.
+<a:kawaiiTwinkleStars:658155172060594196> **Chasseur** à sa mort, il peut choisir un autre joueur à entraîner avec lui dans la tombe.
+<a:bbb_purplesparkles:1226877540463939605> **La Sorcière** chaque nuit, elle se réveille et peut utiliser l'une de ses deux potions : soigner la victime des Loups-Garous, ou tuer quelqu’un.
+<a:star_purp:900515696281255967> **Le Garde** chaque nuit, il protège un joueur d'une éventuelle attaque des Loups-Garous. Il peut se protéger lui même, par contre, il ne peut pas protéger le même joueur de nuit d’affilé. 
+
+<a:tlwStarsGreen:807383101272883211>  **Le Nécromancien** - la nuit, il peut communiquer avec les morts pour obtenir des informations précieuses.
+
+<a:3_arrow:1446307264641372291> **Le Cupidon** la première nuit, il désigne deux joueurs comme Amoureux (il peut se désigner lui même comme un des 2 Amoureux)
+<a:arrowegp:852967066381844520> **Les Amoureux** - Si l'un d'eux meurt, l'autre le suivra dans sa tombe. 
+
+<a:2bluearrow:1090454897297739776> **Le Renard**, il choisit 3 personnes à renfiler la première nuit, et il peut savoir si dans le trio se trouve un loup garou. Si il y’en a aucun, il perd son pouvoir mais il a innocenté 3 joueurs. Par contre si il ya un loup parmis les 3, la nuit suivante il peut renifler parmis un trio encore, à lui de gérer ses soupçons.
+<a:emoji_26:1468144557941067940>  **Le Berger** - possède trois moutons qu'il peut envoyer chaque nuit chez n'importe quel joueur. Si un mouton est envoyé chez un Loup-Garou, il est dévoré, indiquant ainsi la présence d'un loup. Si le berger perd un mouton, il peut continuer à utiliser sa capacité avec ses moutons restants. (comme le renard)
+
+<a:redarroww:971870816432189450> **l’Enfant sauvage** - il choisit un père parmis tout les participants, et devient loup si son père meurt. 
+
+# 🐺 Les méchants 
+<a:tlwStarsRed:807193067001741342> **Loups-Garous** - durant la nuit, ils se réunissent pour voter l'élimination d'un villageois. Pendant la journée, ils doivent éviter d'être démasqués.
+
+<:ScaredDog:658218523142914049> **Loup-Bavard** chaque jour, il reçoit un mot qu'il doit prononcer avant le coucher du soleil. S'il échoue, il meurt.
+
+<a:swirl:1457392130476609600> **Loup Blanc** ou **Loup noir** au choix:
+
+<a:12_arrow:1397679789225148569> **Loup Blanc** Il se réveille la nuit avec les autres Loups-Garous, qui le croient allié. Une nuit sur deux, il peut dévorer un autre joueur de son choix, y compris un Loup-Garou. Son objectif est d'être le seul survivant, ce qui le place en opposition avec tous les autres camps.
+
+<a:ARROW:1090454876762427492> **Loup-Noir** la nuit, il se réveille avec les autres Loups-Garous. Une seule fois dans la partie, il peut infecter une victime en Loup-Garou.
+<a:whitearrow:1090453638478045184> Le joueur infecté conserve son rôle et ses pouvoirs, et cumule aussi les pouvoir d'un Loup-Garou.
