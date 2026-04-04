@@ -10,6 +10,7 @@ import type { SlashCommandBuilder, ChatInputCommandInteraction } from "discord.j
 import { pingCommand } from "./commands/ping.js";
 import { aideCommand } from "./commands/aide.js";
 import { infoCommand } from "./commands/info.js";
+import { loupgarouCommand } from "./commands/loupgarou.js";
 import { onGuildMemberAdd } from "./events/guildMemberAdd.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -23,12 +24,15 @@ export interface Command {
   execute: (interaction: ChatInputCommandInteraction) => Promise<void>;
 }
 
-const commands: Command[] = [pingCommand, aideCommand, infoCommand];
+const commands: Command[] = [pingCommand, aideCommand, infoCommand, loupgarouCommand];
 
+// GuildMembers est un intent privilégié — à activer dans le Developer Portal
+// (Bot → Privileged Gateway Intents → Server Members Intent)
+// puis décommenter GatewayIntentBits.GuildMembers ci-dessous
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMembers,
+    // GatewayIntentBits.GuildMembers,
   ],
 });
 

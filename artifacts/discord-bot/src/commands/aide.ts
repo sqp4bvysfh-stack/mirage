@@ -14,7 +14,8 @@ export const aideCommand: Command = {
       .addFields(
         { name: "/ping", value: "Vérifie la latence du bot.", inline: true },
         { name: "/aide", value: "Affiche ce message d'aide.", inline: true },
-        { name: "/info", value: "Informations sur le serveur.", inline: true }
+        { name: "/info", value: "Informations sur le serveur.", inline: true },
+        { name: "/loupgarou", value: "Lance une partie de Loup-Garou et envoie les rôles en MP (3 à 15 joueurs).", inline: false }
       )
       .setFooter({ text: "Bot Discord • Replit" })
       .setTimestamp();
