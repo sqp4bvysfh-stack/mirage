@@ -218,13 +218,13 @@ importers:
       discord.js:
         specifier: ^14.16.3
         version: 14.26.0
+      tsx:
+        specifier: 'catalog:'
+        version: 4.21.0
     devDependencies:
       '@types/node':
         specifier: 'catalog:'
         version: 25.3.5
-      tsx:
-        specifier: 'catalog:'
-        version: 4.21.0
       typescript:
         specifier: ~5.9.2
         version: 5.9.3
