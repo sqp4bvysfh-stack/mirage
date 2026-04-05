@@ -70,12 +70,12 @@ const FICHES: Record<string, EmbedBuilder> = {
     .addFields(
       { name: "🚀 Utilisation", value:
         "`*ia [message]` — pose une question ou démarre une conversation.\n" +
-        "**@KAYA [message]** — mentionne directement le bot pour le même résultat."
+        "**@MIRAGE [message]** — mentionne directement le bot pour le même résultat."
       },
       { name: "🎭 Personnalité", value: "Mirage est une fille de 20 ans, directe et naturelle. Elle répond en 1-2 phrases max, comme dans un vrai message Discord." },
       { name: "🛡️ Modération", value: "Les modérateurs peuvent lui demander des actions de modération. Les membres normaux ne peuvent pas." },
     )
-    .setFooter({ text: "Commandes : *ia [message] | @KAYA [message]" }),
+    .setFooter({ text: "Commandes : *ia [message] | @MIRAGE [message]" }),
 
   moderation: new EmbedBuilder()
     .setColor(0xe74c3c)
