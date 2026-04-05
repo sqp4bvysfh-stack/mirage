@@ -1,9 +1,9 @@
 import { EmbedBuilder, userMention } from "discord.js";
 import type { User } from "discord.js";
 import type { Command } from "../types.js";
+import { isModerator } from "../utils/modCheck.js";
 
 const ROLES = {
-  // ─── Villageois spéciaux ───────────────────────────────────────────────────
   VILLAGEOIS: {
     nom: "🧑‍🌾 Villageois",
     camp: "Village",
@@ -58,24 +58,22 @@ const ROLES = {
     camp: "Village",
     couleur: 0xd35400,
     description:
-      "La première nuit, tu choisis **3 joueurs** à renifler. Tu sauras si un Loup-Garou se trouve parmi eux.\n• **Si aucun loup** : tu perds ton pouvoir, mais tu as innocenté 3 joueurs.\n• **Si un loup est présent** : la nuit suivante, tu peux renifler un nouveau trio.\nUtilise tes soupçons pour cibler les bons joueurs !",
+      "La première nuit, tu choisis **3 joueurs** à renifler. Tu sauras si un Loup-Garou se trouve parmi eux.\n• **Si aucun loup** : tu perds ton pouvoir, mais tu as innocenté 3 joueurs.\n• **Si un loup est présent** : la nuit suivante, tu peux renifler un nouveau trio.",
   },
   BERGER: {
     nom: "🐑 Le Berger",
     camp: "Village",
     couleur: 0x27ae60,
     description:
-      "Tu possèdes **3 moutons**. Chaque nuit, tu peux envoyer un mouton chez n'importe quel joueur.\n• Si ce joueur est un **Loup-Garou**, ton mouton est dévoré — tu sais qu'un loup habite là.\n• Tu peux continuer à utiliser ta capacité avec tes moutons restants.\nGère tes ressources comme le Renard gère ses renifflements !",
+      "Tu possèdes **3 moutons**. Chaque nuit, tu peux envoyer un mouton chez n'importe quel joueur.\n• Si ce joueur est un **Loup-Garou**, ton mouton est dévoré — tu sais qu'un loup habite là.",
   },
   ENFANT_SAUVAGE: {
     nom: "🧒 L'Enfant Sauvage",
     camp: "Village (variable)",
     couleur: 0x8e44ad,
     description:
-      "La première nuit, tu choisis en secret un joueur parmi les participants comme **père**. Tant que ton père est en vie, tu joues du côté du village. **Si ton père meurt**, tu bascules du côté des Loups-Garous et rejoins leur clan !",
+      "La première nuit, tu choisis en secret un joueur comme **père**. Tant que ton père est en vie, tu joues du côté du village. **Si ton père meurt**, tu bascules du côté des Loups-Garous !",
   },
-
-  // ─── Les méchants ─────────────────────────────────────────────────────────
   LOUP_GAROU: {
     nom: "🐺 Loup-Garou",
     camp: "Loups",
@@ -88,21 +86,21 @@ const ROLES = {
     camp: "Loups",
     couleur: 0xc0392b,
     description:
-      "Tu es un Loup-Garou, mais avec une contrainte : chaque jour, tu reçois un **mot secret** que tu dois prononcer avant le coucher du soleil. Si tu échoues à le placer dans la conversation… tu meurs. Sois créatif et discret !",
+      "Tu es un Loup-Garou, mais chaque jour tu reçois un **mot secret** que tu dois prononcer avant le coucher du soleil. Si tu échoues… tu meurs. Sois créatif et discret !",
   },
   LOUP_BLANC: {
     nom: "🤍 Loup Blanc",
     camp: "Solo",
     couleur: 0xecf0f1,
     description:
-      "Tu te réveilles la nuit avec les autres Loups-Garous, qui te croient allié. Mais ton vrai objectif est d'être le **seul survivant**, t'opposant à tous les camps.\n**Une nuit sur deux**, tu peux dévorer un joueur de ton choix — y compris un autre Loup-Garou. Joue double jeu !",
+      "Tu te réveilles la nuit avec les autres Loups-Garous, qui te croient allié. Mais ton vrai objectif est d'être le **seul survivant**.\n**Une nuit sur deux**, tu peux dévorer un joueur — y compris un autre Loup-Garou.",
   },
   LOUP_NOIR: {
     nom: "🖤 Loup-Noir",
     camp: "Loups",
     couleur: 0x2c3e50,
     description:
-      "Tu te réveilles la nuit avec les autres Loups-Garous. **Une seule fois dans la partie**, tu peux infecter la victime choisie cette nuit-là : elle devient Loup-Garou. Le joueur infecté **conserve son rôle et ses pouvoirs**, tout en gagnant ceux d'un Loup-Garou !",
+      "Tu te réveilles la nuit avec les autres Loups-Garous. **Une seule fois dans la partie**, tu peux infecter la victime : elle devient Loup-Garou tout en conservant son rôle et ses pouvoirs !",
   },
 };
 
@@ -110,12 +108,8 @@ type RoleKey = keyof typeof ROLES;
 
 function getRoleDistribution(count: number): RoleKey[] {
   const roles: RoleKey[] = [];
-
-  // Loups de base
   const nbLoups = count <= 5 ? 1 : count <= 9 ? 2 : count <= 13 ? 3 : 4;
   for (let i = 0; i < nbLoups; i++) roles.push("LOUP_GAROU");
-
-  // Villageois spéciaux selon le nombre de joueurs
   roles.push("VOYANTE");
   if (count >= 5)  roles.push("SORCIERE");
   if (count >= 6)  roles.push("CHASSEUR");
@@ -125,15 +119,10 @@ function getRoleDistribution(count: number): RoleKey[] {
   if (count >= 13) roles.push("RENARD");
   if (count >= 14) roles.push("NECROMANCIEN");
   if (count >= 15) roles.push("BERGER");
-
-  // Loups spéciaux dans les grandes parties
   if (count >= 16) roles.push("LOUP_BLANC");
   if (count >= 18) roles.push("LOUP_BAVARD");
   if (count >= 20) roles.push("LOUP_NOIR");
-
-  // Compléter avec des villageois
   while (roles.length < count) roles.push("VILLAGEOIS");
-
   return roles;
 }
 
@@ -159,12 +148,15 @@ export const loupgarouCommand: Command = {
   usage: "*loupgarou @j1 @j2 @j3 ...",
 
   async execute(message) {
+    if (!message.member || !isModerator(message.member)) {
+      await message.reply("❌ Seuls les modérateurs peuvent lancer une partie de Loup-Garou.");
+      return;
+    }
+
     const players: User[] = message.mentions.users.filter((u) => !u.bot).map((u) => u);
 
     if (players.length < 3) {
-      await message.reply(
-        "❌ Il faut mentionner au moins **3 joueurs** !\nEx : `*loupgarou @j1 @j2 @j3`"
-      );
+      await message.reply("❌ Il faut mentionner au moins **3 joueurs** !\nEx : `*loupgarou @j1 @j2 @j3`");
       return;
     }
 
@@ -179,7 +171,6 @@ export const loupgarouCommand: Command = {
       roleKey: roleKeys[i],
     }));
 
-    // Envoyer les rôles en MP
     const results: string[] = [];
     for (const { user, roleKey } of assignments) {
       const role = ROLES[roleKey];
@@ -198,13 +189,12 @@ export const loupgarouCommand: Command = {
 
       try {
         await user.send({ embeds: [dmEmbed] });
-        results.push(`✅ ${userMention(user.id)} — ${role.nom}`);
+        results.push(`✅ ${userMention(user.id)} — rôle envoyé`);
       } catch {
-        results.push(`⚠️ ${userMention(user.id)} — MP fermés`);
+        results.push(`⚠️ ${userMention(user.id)} — MP fermés, rôle non reçu`);
       }
     }
 
-    // Résumé public (sans révéler les rôles)
     const nbLoups = assignments.filter((a) =>
       ["LOUP_GAROU", "LOUP_BAVARD", "LOUP_NOIR"].includes(a.roleKey)
     ).length;
@@ -215,9 +205,9 @@ export const loupgarouCommand: Command = {
       .setTitle("🌕 La nuit tombe sur le village…")
       .setDescription(
         `Partie de **Loup-Garou** lancée avec **${players.length} joueurs** !\n` +
-          `Chaque joueur a reçu son rôle en message privé.\n\n` +
-          `🐺 Il y a **${nbLoups} loup${nbLoups > 1 ? "s" : ""}** parmi vous…` +
-          (hasLoupBlanc ? "\n⚠️ Un joueur joue pour lui-même…" : "")
+        `Chaque joueur a reçu son rôle en message privé.\n\n` +
+        `🐺 Il y a **${nbLoups} loup${nbLoups > 1 ? "s" : ""}** parmi vous…` +
+        (hasLoupBlanc ? "\n⚠️ Un joueur joue pour lui-même…" : "")
       )
       .addFields({ name: "📬 Envois des rôles", value: results.join("\n") })
       .setFooter({ text: "Que le meilleur camp gagne !" })

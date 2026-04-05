@@ -7,6 +7,20 @@ import { aideCommand } from "./commands/aide.js";
 import { infoCommand } from "./commands/info.js";
 import { loupgarouCommand } from "./commands/loupgarou.js";
 import { rolesCommand } from "./commands/roles.js";
+import { sayCommand } from "./commands/say.js";
+import { banCommand } from "./commands/ban.js";
+import { tempbanCommand } from "./commands/tempban.js";
+import { muteCommand } from "./commands/mute.js";
+import { kickCommand } from "./commands/kick.js";
+import { warnCommand } from "./commands/warn.js";
+import { quizCommand } from "./commands/quiz.js";
+import { undercoverCommand } from "./commands/undercover.js";
+import { telephoneCommand } from "./commands/telephone.js";
+import { twerkCommand } from "./commands/twerk.js";
+import { sendCommand } from "./commands/send.js";
+import { unmuteCommand } from "./commands/unmute.js";
+import { unbanCommand } from "./commands/unban.js";
+import { iaCommand, repondreIA } from "./commands/ia.js";
 
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -17,7 +31,12 @@ if (!token) {
 export const PREFIX = "*";
 
 const commands = new Collection<string, Command>();
-for (const cmd of [pingCommand, aideCommand, infoCommand, loupgarouCommand, rolesCommand]) {
+for (const cmd of [
+  pingCommand, aideCommand, infoCommand, loupgarouCommand, rolesCommand,
+  sayCommand, banCommand, tempbanCommand, muteCommand, kickCommand, warnCommand,
+  quizCommand, undercoverCommand, telephoneCommand, twerkCommand, sendCommand,
+  unmuteCommand, unbanCommand, iaCommand,
+]) {
   commands.set(cmd.name, cmd);
 }
 
@@ -26,11 +45,34 @@ const client = new Client({
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
     GatewayIntentBits.MessageContent,
-    // GatewayIntentBits.GuildMembers — activer dans le Developer Portal pour la bienvenue
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.DirectMessages,
   ],
 });
 
-// Serveur HTTP de statut (nécessaire pour le déploiement Replit)
+// ─── Anti-Raid ────────────────────────────────────────────────────────────────
+const joinTracker = new Map<string, number[]>();
+const RAID_THRESHOLD = 5;
+const RAID_WINDOW_MS = 10000;
+
+client.on(Events.GuildMemberAdd, async (member) => {
+  const guildId = member.guild.id;
+  const now = Date.now();
+  const joins = (joinTracker.get(guildId) ?? []).filter(t => now - t < RAID_WINDOW_MS);
+  joins.push(now);
+  joinTracker.set(guildId, joins);
+
+  if (joins.length >= RAID_THRESHOLD) {
+    const channel = member.guild.systemChannel ?? member.guild.channels.cache.find(c => c.isTextBased());
+    if (channel && channel.isTextBased()) {
+      await channel.send(
+        `🚨 **ALERTE ANTI-RAID** — ${joins.length} membres ont rejoint en moins de 10 secondes !`
+      ).catch(() => {});
+    }
+  }
+});
+
+// ─── Serveur HTTP ─────────────────────────────────────────────────────────────
 const PORT = process.env.BOT_PORT ? parseInt(process.env.BOT_PORT) : 3000;
 const httpServer = createServer((req, res) => {
   const isOnline = client.isReady();
@@ -48,10 +90,27 @@ httpServer.listen(PORT, () => {
   console.log(`🌐 Serveur statut en ligne sur le port ${PORT}`);
 });
 
+// ─── Arrêt du bot ─────────────────────────────────────────────────────────────
+async function shutdown() {
+  const salon = client.channels.cache.get("1487480560090874066");
+  if (salon && salon.isTextBased()) {
+    await salon.send("😴 Bot endormi...").catch(() => {});
+  }
+  client.destroy();
+  process.exit(0);
+}
+
+process.on("SIGTERM", shutdown);
+process.on("SIGINT", shutdown);
+
+// ─── Bot prêt ─────────────────────────────────────────────────────────────────
 client.once(Events.ClientReady, (readyClient) => {
-  console.log(`✅ Bot connecté en tant que ${readyClient.user.tag}`);
-  console.log(`📡 Serveurs : ${readyClient.guilds.cache.size}`);
-  console.log(`📋 Commandes : ${[...commands.keys()].map((k) => PREFIX + k).join(", ")}`);
+  console.log(`✅ Bot en ligne — ${readyClient.user.tag}`);
+
+  const salon = readyClient.channels.cache.get("1487480560090874066");
+  if (salon && salon.isTextBased()) {
+    salon.send("✅ Bot en ligne !").catch(() => {});
+  }
 
   const rest = new REST().setToken(token!);
   rest.put(Routes.applicationCommands(readyClient.user.id), { body: [] }).catch(() => {});
@@ -60,8 +119,24 @@ client.once(Events.ClientReady, (readyClient) => {
   }
 });
 
+// ─── Messages ─────────────────────────────────────────────────────────────────
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
+
+  // ─── Réponse aux mentions ──────────────────────────────────────────────────
+  if (client.user && message.mentions.has(client.user)) {
+    const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
+    if (texte) {
+      const isMod =
+        message.member?.permissions.has("ManageMessages") ||
+        message.member?.permissions.has("Administrator");
+      await message.channel.sendTyping();
+      const reply = await repondreIA(texte, isMod ?? false);
+      await message.reply(reply);
+    }
+    return;
+  }
+
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
