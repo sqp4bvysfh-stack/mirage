@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { Client, GatewayIntentBits, Collection, Events, REST, Routes } from "discord.js";
+import { Client, GatewayIntentBits, Partials, Collection, Events, REST, Routes } from "discord.js";
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
 import { pingCommand } from "./commands/ping.js";
@@ -47,6 +47,12 @@ const client = new Client({
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.GuildMessageReactions,
+  ],
+  partials: [
+    Partials.Message,
+    Partials.Channel,
+    Partials.Reaction,
   ],
 });
 
