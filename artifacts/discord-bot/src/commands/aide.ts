@@ -10,7 +10,7 @@ const FICHES: Record<string, EmbedBuilder> = {
       "Il faut trouver qui est l'Undercover avant qu'il ne se fonde dans la masse !"
     )
     .addFields(
-      { name: "🚀 Lancer une partie", value: "`*undercover @j1 @j2 @j3 ...`\nMinimum **3 joueurs**, maximum **12**." },
+      { name: "🚀 Lancer une partie", value: "`*undercover` — ouvre un **lobby**.\nLes joueurs cliquent ✅ pour rejoindre, le host clique 🚀 pour lancer.\nOu direct avec mentions : `*undercover @j1 @j2 @j3` (min. 3, max. 12)." },
       { name: "📬 Déroulement", value: "Chaque joueur reçoit son mot en **MP**.\nÀ tour de rôle, chacun décrit son mot **sans le dire** directement.\nEnsuite, le groupe vote pour éliminer le suspect." },
       {
         name: "🎭 Les rôles", value:
@@ -42,7 +42,7 @@ const FICHES: Record<string, EmbedBuilder> = {
     .setTitle("🐺 Loup-Garou — Explication")
     .setDescription("Le jeu de société Loup-Garou de Thiercelieux, directement sur Discord ! Chaque joueur reçoit son rôle en MP.")
     .addFields(
-      { name: "🚀 Lancer une partie", value: "`*loupgarou @j1 @j2 @j3 ...`\nMinimum **3 joueurs**, maximum **20**." },
+      { name: "🚀 Lancer une partie", value: "`*loupgarou` — ouvre un **lobby**.\nLes joueurs cliquent ✅ pour rejoindre, le host clique 🚀 pour lancer.\nOu direct avec mentions : `*loupgarou @j1 @j2 @j3` (min. 3, max. 20)." },
       { name: "📬 Attribution des rôles", value: "Les rôles sont envoyés automatiquement en **MP** à chaque joueur selon le nombre de participants. Utilise `*roles` pour voir tous les rôles disponibles." },
       { name: "🐺 Camps", value:
         "**Village** — Villageois, Voyante, Sorcière, Chasseur, Garde, Nécromancien, Cupidon, Renard, Berger, Enfant Sauvage\n" +
@@ -160,9 +160,9 @@ export const aideCommand: Command = {
       .setColor(0x2ecc71)
       .setTitle("🎮 Commandes — Jeux")
       .addFields(
-        { name: "`*loupgarou @j1 @j2 ...`", value: "Lance une partie de Loup-Garou. Rôles envoyés en MP (3–20 joueurs).", inline: false },
+        { name: "`*loupgarou`", value: "Ouvre un lobby 🐺. Joueurs → ✅ pour rejoindre, host → 🚀 pour lancer (3–20 joueurs).", inline: false },
         { name: "`*roles`", value: "Affiche tous les rôles du Loup-Garou.", inline: false },
-        { name: "`*undercover @j1 @j2 ...`", value: "Lance une partie d'Undercover. Mots envoyés en MP (3–12 joueurs).", inline: false },
+        { name: "`*undercover`", value: "Ouvre un lobby 🕵️. Joueurs → ✅ pour rejoindre, host → 🚀 pour lancer (3–12 joueurs).", inline: false },
         { name: "`*quiz drapeaux`", value: "Quiz de drapeaux — 30 secondes pour répondre.", inline: false },
         { name: "`*quiz cultureg`", value: "Quiz de culture générale.", inline: false },
         { name: "`*quiz capital`", value: "Quiz de capitales du monde.", inline: false },
