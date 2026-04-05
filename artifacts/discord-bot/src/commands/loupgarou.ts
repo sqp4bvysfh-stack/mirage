@@ -1,6 +1,7 @@
 import { EmbedBuilder, userMention } from "discord.js";
 import type { Message, User } from "discord.js";
 import type { Command } from "../types.js";
+import { isModerator } from "../utils/modCheck.js";
 
 const ROLES = {
   VILLAGEOIS:    { nom: "🧑‍🌾 Villageois",      camp: "Village",           couleur: 0x3498db, description: "Tu es un simple villageois. Tu n'as aucun pouvoir spécial, mais ta force réside dans ton observation et ta persuasion. Chaque jour, vote pour éliminer les suspects et débarrasser le village des Loups-Garous !" },
@@ -123,7 +124,7 @@ function makeLobbyEmbed(host: User, players: Map<string, User>, tempsRestant: st
     .setTitle("🐺 Lobby Loup-Garou")
     .setDescription(
       `**${host.username}** ouvre une partie !\n\n` +
-      `Rejoins en cliquant sur ✅ ci-dessous.\nQuand tout le monde est là, ${userMention(host.id)} clique sur 🚀 pour lancer.\n\n` +
+      `Clique sur ✅ pour rejoindre la partie *(le host aussi s'il veut jouer)*.\nQuand tout le monde est là, ${userMention(host.id)} clique sur 🚀 pour lancer.\n\n` +
       `> Min. **3 joueurs** — Max. **20 joueurs**`
     )
     .addFields(
@@ -139,6 +140,12 @@ export const loupgarouCommand: Command = {
   usage: "*loupgarou",
 
   async execute(message) {
+    // Réservé aux admins/modérateurs
+    if (!message.member || !isModerator(message.member)) {
+      await message.reply("❌ Seuls les modérateurs peuvent lancer une partie de Loup-Garou.");
+      return;
+    }
+
     // Mode immédiat si des mentions sont fournies (rétrocompatibilité)
     const mentions = message.mentions.users.filter(u => !u.bot);
     if (mentions.size >= 3) {
@@ -159,8 +166,8 @@ export const loupgarouCommand: Command = {
     const DUREE_MS = 5 * 60 * 1000; // 5 minutes
     const host = message.author;
 
+    // Le host n'est PAS auto-ajouté — il doit cliquer ✅ comme tout le monde s'il veut jouer
     const players = new Map<string, User>();
-    players.set(host.id, host);
 
     const lobbyMsg = await message.channel.send({
       embeds: [makeLobbyEmbed(host, players, "5 min")],
