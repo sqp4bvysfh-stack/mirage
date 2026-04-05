@@ -86,17 +86,6 @@ export const undercoverCommand: Command = {
   usage: "*undercover",
 
   async execute(message) {
-    // Mode immédiat si des mentions sont fournies (rétrocompatibilité)
-    const mentions = message.mentions.users.filter(u => !u.bot);
-    if (mentions.size >= 3) {
-      await lancerPartie(message, [...mentions.values()]);
-      return;
-    }
-    if (mentions.size > 0 && mentions.size < 3) {
-      await message.reply("❌ Il faut au moins **3 joueurs** ! Lance `*undercover` sans mentions pour ouvrir un lobby.");
-      return;
-    }
-
     if (lobbiesActifs.has(message.channelId)) {
       await message.reply("❌ Un lobby est déjà en cours dans ce salon !");
       return;
