@@ -124,7 +124,7 @@ function makeLobbyEmbed(host: User, players: Map<string, User>, tempsRestant: st
     .setTitle("🐺 Lobby Loup-Garou")
     .setDescription(
       `**${host.username}** ouvre une partie !\n\n` +
-      `Clique sur ✅ pour rejoindre la partie *(le host aussi s'il veut jouer)*.\nQuand tout le monde est là, ${userMention(host.id)} clique sur 🚀 pour lancer.\n\n` +
+      `Clique sur ✅ pour rejoindre la partie.\nQuand tout le monde est là, ${userMention(host.id)} *(maître du jeu)* clique sur 🚀 pour lancer.\n\n` +
       `> Min. **3 joueurs** — Max. **20 joueurs**`
     )
     .addFields(
@@ -222,6 +222,11 @@ export const loupgarouCommand: Command = {
 
     collector.on("collect", async (reaction, user) => {
       if (reaction.emoji.name === "✅") {
+        // Le host est maître du jeu, il ne peut pas jouer
+        if (user.id === host.id) {
+          await reaction.users.remove(user.id).catch(() => {});
+          return;
+        }
         if (players.size >= 20) {
           await reaction.users.remove(user.id).catch(() => {});
           return;
