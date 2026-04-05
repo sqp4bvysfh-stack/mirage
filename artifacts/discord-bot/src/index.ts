@@ -72,6 +72,14 @@ client.on(Events.GuildMemberAdd, async (member) => {
   }
 });
 
+// ─── Message de bienvenue ─────────────────────────────────────────────────────
+client.on(Events.GuildMemberAdd, async (member) => {
+  const salon = member.guild.channels.cache.get("1476532494768672850");
+  if (salon && salon.isTextBased()) {
+    await salon.send(`👋 Bienvenue sur le serveur ${member} ! Passe un bon moment parmi nous.`).catch(() => {});
+  }
+});
+
 // ─── Serveur HTTP ─────────────────────────────────────────────────────────────
 const PORT = process.env.BOT_PORT ? parseInt(process.env.BOT_PORT) : 3000;
 const httpServer = createServer((req, res) => {
@@ -131,7 +139,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
         message.member?.permissions.has("ManageMessages") ||
         message.member?.permissions.has("Administrator");
       await message.channel.sendTyping();
-      const reply = await repondreIA(texte, isMod ?? false);
+      const reply = await repondreIA(texte, isMod ?? false, message.channelId);
       await message.reply(reply);
     }
     return;
