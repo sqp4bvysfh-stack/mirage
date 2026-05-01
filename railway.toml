@@ -1,5 +1,7 @@
-[build]
 builder = "nixpacks"
+
+[build]
+buildCommand = "pnpm install --no-frozen-lockfile && pnpm --filter @workspace/discord-bot build"
 
 [deploy]
 startCommand = "pnpm --filter @workspace/discord-bot run start"
