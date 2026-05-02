@@ -1,5 +1,5 @@
 import { createServer } from "node:http";
-import { Client, GatewayIntentBits, Partials, Collection, Events, REST, Routes } from "discord.js";
+import { Client, GatewayIntentBits, Partials, Collection, Events } from "discord.js";
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
 
@@ -28,6 +28,8 @@ import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
+import { giveawayCommand, rerollCommand } from "./commands/giveaway.js";
+import { pollCommand } from "./commands/poll.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -67,6 +69,9 @@ for (const cmd of [
   clearCommand,
   lockCommand,
   unlockCommand,
+  giveawayCommand,
+  rerollCommand,
+  pollCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -80,6 +85,8 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildVoiceStates,
   ],
   partials: [
     Partials.Message,
