@@ -7,7 +7,7 @@ import type { Command } from "./types.js";
 import { pingCommand } from "./commands/ping.js";
 import { aideCommand } from "./commands/aide.js";
 import { infoCommand } from "./commands/info.js";
-import { loupgarouCommand } from "./commands/loupgarou.js";
+import { loupgarouCommand, finpartieCommand } from "./commands/loupgarou.js";
 import { rolesCommand } from "./commands/roles.js";
 import { roleaddCommand } from "./commands/roleadd.js";
 import { roleremoveCommand } from "./commands/roleremove.js";
@@ -34,8 +34,8 @@ import { pollCommand } from "./commands/poll.js";
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
-  console.error("❌ DISCORD_BOT_TOKEN manquant");
-  process.exit(1);
+ console.error("❌ DISCORD_BOT_TOKEN manquant");
+ process.exit(1);
 }
 
 export const PREFIX = "*";
@@ -44,55 +44,56 @@ export const PREFIX = "*";
 const commands = new Collection<string, Command>();
 
 for (const cmd of [
-  pingCommand,
-  aideCommand,
-  infoCommand,
-  loupgarouCommand,
-  rolesCommand,
-  roleaddCommand,
-  roleremoveCommand,
-  sayCommand,
-  banCommand,
-  tempbanCommand,
-  muteCommand,
-  kickCommand,
-  warnCommand,
-  quizCommand,
-  undercoverCommand,
-  telephoneCommand,
-  twerkCommand,
-  sendCommand,
-  unmuteCommand,
-  unbanCommand,
-  iaCommand,
-  confessionCommand,
-  clearCommand,
-  lockCommand,
-  unlockCommand,
-  giveawayCommand,
-  rerollCommand,
-  pollCommand,
+ pingCommand,
+ aideCommand,
+ infoCommand,
+ loupgarouCommand,
+ finpartieCommand,
+ rolesCommand,
+ roleaddCommand,
+ roleremoveCommand,
+ sayCommand,
+ banCommand,
+ tempbanCommand,
+ muteCommand,
+ kickCommand,
+ warnCommand,
+ quizCommand,
+ undercoverCommand,
+ telephoneCommand,
+ twerkCommand,
+ sendCommand,
+ unmuteCommand,
+ unbanCommand,
+ iaCommand,
+ confessionCommand,
+ clearCommand,
+ lockCommand,
+ unlockCommand,
+ giveawayCommand,
+ rerollCommand,
+ pollCommand,
 ]) {
-  commands.set(cmd.name, cmd);
+ commands.set(cmd.name, cmd);
 }
 
 // ─── CLIENT ───────────────────────────────────────────────
 const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildVoiceStates,
-  ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.Reaction,
-  ],
+ intents: [
+   GatewayIntentBits.Guilds,
+   GatewayIntentBits.GuildMessages,
+   GatewayIntentBits.MessageContent,
+   GatewayIntentBits.GuildMembers,
+   GatewayIntentBits.DirectMessages,
+   GatewayIntentBits.GuildMessageReactions,
+   GatewayIntentBits.GuildPresences,
+   GatewayIntentBits.GuildVoiceStates,
+ ],
+ partials: [
+   Partials.Message,
+   Partials.Channel,
+   Partials.Reaction,
+ ],
 });
 
 // ─── ANTI RAID ─────────────────────────────────────────────
@@ -101,93 +102,93 @@ const RAID_THRESHOLD = 5;
 const RAID_WINDOW_MS = 10000;
 
 client.on(Events.GuildMemberAdd, async (member) => {
-  const guildId = member.guild.id;
-  const now = Date.now();
+ const guildId = member.guild.id;
+ const now = Date.now();
 
-  const joins = (joinTracker.get(guildId) || []).filter((t: number) => now - t < RAID_WINDOW_MS);
-  joins.push(now);
-  joinTracker.set(guildId, joins);
+ const joins = (joinTracker.get(guildId) || []).filter((t: number) => now - t < RAID_WINDOW_MS);
+ joins.push(now);
+ joinTracker.set(guildId, joins);
 
-  if (joins.length >= RAID_THRESHOLD) {
-    const channel = member.guild.systemChannel || member.guild.channels.cache.find(c => c.isTextBased());
-    if (channel && channel.isTextBased()) {
-      channel.send(`🚨 ALERTE RAID : ${joins.length} arrivées rapides`).catch(() => {});
-    }
-  }
+ if (joins.length >= RAID_THRESHOLD) {
+   const channel = member.guild.systemChannel || member.guild.channels.cache.find(c => c.isTextBased());
+   if (channel && channel.isTextBased()) {
+     channel.send(`🚨 ALERTE RAID : ${joins.length} arrivées rapides`).catch(() => {});
+   }
+ }
 });
 
 // ─── WELCOME ──────────────────────────────────────────────
 client.on(Events.GuildMemberAdd, async (member) => {
-  const salon = member.guild.channels.cache.get("1476532494768672850");
-  if (salon && salon.isTextBased()) {
-    salon.send(`👋 Bienvenue ${member}`).catch(() => {});
-  }
+ const salon = member.guild.channels.cache.get("1476532494768672850");
+ if (salon && salon.isTextBased()) {
+   salon.send(`👋 Bienvenue ${member}`).catch(() => {});
+ }
 });
 
 // ─── HTTP SERVER ──────────────────────────────────────────
 const PORT = process.env.BOT_PORT ? parseInt(process.env.BOT_PORT) : 3000;
 
 createServer((req, res) => {
-  const status = {
-    status: client.isReady() ? "online" : "starting",
-    bot: client.user?.tag ?? null,
-    guilds: client.guilds.cache.size,
-    uptime: client.uptime ?? 0,
-  };
+ const status = {
+   status: client.isReady() ? "online" : "starting",
+   bot: client.user?.tag ?? null,
+   guilds: client.guilds.cache.size,
+   uptime: client.uptime ?? 0,
+ };
 
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(status));
+ res.writeHead(200, { "Content-Type": "application/json" });
+ res.end(JSON.stringify(status));
 }).listen(PORT);
 
 // ─── READY ────────────────────────────────────────────────
 client.once(Events.ClientReady, (c) => {
-  console.log(`✅ Bot en ligne : ${c.user.tag}`);
+ console.log(`✅ Bot en ligne : ${c.user.tag}`);
 });
 
 // ─── INTERACTIONS ─────────────────────────────────────────
 client.on(Events.InteractionCreate, async (interaction) => {
-  try {
-    await handleConfessionInteraction(interaction);
-  } catch (err) {
-    console.error("Erreur interaction:", err);
-  }
+ try {
+   await handleConfessionInteraction(interaction);
+ } catch (err) {
+   console.error("Erreur interaction:", err);
+ }
 });
 
 // ─── MESSAGES ─────────────────────────────────────────────
 client.on(Events.MessageCreate, async (message: Message) => {
-  if (message.author.bot) return;
+ if (message.author.bot) return;
 
-  // IA mention
-  if (client.user && message.mentions.has(client.user)) {
-    const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
+ // IA mention
+ if (client.user && message.mentions.has(client.user)) {
+   const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
 
-    if (texte) {
-      const isMod =
-        message.member?.permissions.has("ManageMessages") ||
-        message.member?.permissions.has("Administrator");
+   if (texte) {
+     const isMod =
+       message.member?.permissions.has("ManageMessages") ||
+       message.member?.permissions.has("Administrator");
 
-      await message.channel.sendTyping();
-      const reply = await repondreIA(texte, isMod ?? false, message.channelId);
-      await message.reply(reply);
-    }
-    return;
-  }
+     await message.channel.sendTyping();
+     const reply = await repondreIA(texte, isMod ?? false, message.channelId);
+     await message.reply(reply);
+   }
+   return;
+ }
 
-  if (!message.content.startsWith(PREFIX)) return;
+ if (!message.content.startsWith(PREFIX)) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
-  const commandName = args.shift()?.toLowerCase();
-  if (!commandName) return;
+ const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
+ const commandName = args.shift()?.toLowerCase();
+ if (!commandName) return;
 
-  const command = commands.get(commandName);
-  if (!command) return;
+ const command = commands.get(commandName);
+ if (!command) return;
 
-  try {
-    await command.execute(message, args);
-  } catch (err) {
-    console.error(err);
-    message.reply("❌ erreur commande").catch(() => {});
-  }
+ try {
+   await command.execute(message, args);
+ } catch (err) {
+   console.error(err);
+   message.reply("❌ erreur commande").catch(() => {});
+ }
 });
 
 // ─── LOGIN ────────────────────────────────────────────────

@@ -1,7 +1,10 @@
-import { EmbedBuilder, userMention } from "discord.js";
-import type { Message, User } from "discord.js";
+import { EmbedBuilder, userMention, PermissionFlagsBits } from "discord.js";
+import type { Message, User, TextChannel } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
+
+const DECORATIF_ROLE_ID = "1500158112831897630";
+const SALON_LOUPS_ID = "1500158423864442930";
 
 const ROLES = {
   VILLAGEOIS:    { nom: "🧑‍🌾 Villageois",      camp: "Village",           couleur: 0x3498db, description: "Tu es un simple villageois. Tu n'as aucun pouvoir spécial, mais ta force réside dans ton observation et ta persuasion. Chaque jour, vote pour éliminer les suspects et débarrasser le village des Loups-Garous !" },
@@ -18,6 +21,8 @@ const ROLES = {
   LOUP_BAVARD:  { nom: "💬 Loup-Bavard",         camp: "Loups",             couleur: 0xc0392b, description: "Tu es un Loup-Garou, mais chaque jour tu reçois un **mot secret** que tu dois prononcer avant le coucher du soleil. Si tu échoues… tu meurs." },
   LOUP_BLANC:   { nom: "🤍 Loup Blanc",          camp: "Solo",              couleur: 0xecf0f1, description: "Tu te réveilles la nuit avec les autres Loups-Garous, qui te croient allié. Mais ton vrai objectif est d'être le **seul survivant**.\n**Une nuit sur deux**, tu peux dévorer un joueur — y compris un autre Loup-Garou." },
   LOUP_NOIR:    { nom: "🖤 Loup-Noir",           camp: "Loups",             couleur: 0x2c3e50, description: "Tu te réveilles la nuit avec les autres Loups-Garous. **Une seule fois dans la partie**, tu peux infecter la victime : elle devient Loup-Garou tout en conservant son rôle et ses pouvoirs !" },
+  NAIN:         { nom: "⛏️ Le Nain",             camp: "Village",           couleur: 0xf39c12, description: "Chaque nuit, tu choisis un joueur et tentes de deviner son rôle. Si tu réussis, ce joueur meurt instantanément ! Si tu échoues, tu dois choisir quelqu'un d'autre la prochaine nuit." },
+  SERIAL_KILLER:{ nom: "🔪 Serial Killer",       camp: "Solo",              couleur: 0x922b21, description: "Tu n'es ni avec les loups ni avec les villageois. Chaque nuit, tu tues un joueur de ton choix pour ton propre plaisir. Ton objectif : être le dernier survivant." },
 };
 
 type RoleKey = keyof typeof ROLES;
@@ -26,9 +31,11 @@ const CAMP_COLORS: Record<string, string> = {
   "Village": "🟦", "Village (variable)": "🟪", "Loups": "🟥", "Solo": "⬜",
 };
 
+const LOUPS_ROLES: RoleKey[] = ["LOUP_GAROU", "LOUP_BAVARD", "LOUP_NOIR", "LOUP_BLANC"];
+
 function getRoleDistribution(count: number): RoleKey[] {
   const roles: RoleKey[] = [];
-  const nbLoups = count <= 5 ? 1 : count <= 9 ? 2 : count <= 13 ? 3 : 4;
+  const nbLoups = count <= 5 ? 1 : count <= 9 ? 2 : count <= 13 ? 3 : count <= 19 ? 4 : 5;
   for (let i = 0; i < nbLoups; i++) roles.push("LOUP_GAROU");
   roles.push("VOYANTE");
   if (count >= 5)  roles.push("SORCIERE");
@@ -42,6 +49,8 @@ function getRoleDistribution(count: number): RoleKey[] {
   if (count >= 16) roles.push("LOUP_BLANC");
   if (count >= 18) roles.push("LOUP_BAVARD");
   if (count >= 20) roles.push("LOUP_NOIR");
+  if (count >= 22) roles.push("NAIN");
+  if (count >= 25) roles.push("SERIAL_KILLER");
   while (roles.length < count) roles.push("VILLAGEOIS");
   return roles;
 }
@@ -56,9 +65,47 @@ function shuffle<T>(array: T[]): T[] {
 }
 
 async function lancerPartie(message: Message, players: User[]) {
+  const guild = message.guild!;
   const roleKeys = shuffle(getRoleDistribution(players.length));
   const assignments = players.map((user, i) => ({ user, roleKey: roleKeys[i] as RoleKey }));
 
+  // ── Attribuer le rôle décoratif à tout le monde ──
+  const decoratifRole = guild.roles.cache.get(DECORATIF_ROLE_ID);
+  if (decoratifRole) {
+    for (const { user } of assignments) {
+      const member = await guild.members.fetch(user.id).catch(() => null);
+      if (member) await member.roles.add(decoratifRole).catch(() => {});
+    }
+  }
+
+  // ── Donner accès au salon loups ──
+  const salonLoups = guild.channels.cache.get(SALON_LOUPS_ID) as TextChannel | undefined;
+  const loups = assignments.filter(a => LOUPS_ROLES.includes(a.roleKey));
+
+  if (salonLoups) {
+    // Bloquer tout le monde d'abord
+    await salonLoups.permissionOverwrites.edit(guild.roles.everyone, {
+      ViewChannel: false,
+      SendMessages: false,
+    }).catch(() => {});
+
+    // Donner accès uniquement aux loups
+    for (const { user } of loups) {
+      const member = await guild.members.fetch(user.id).catch(() => null);
+      if (member) {
+        await salonLoups.permissionOverwrites.edit(member, {
+          ViewChannel: true,
+          SendMessages: true,
+        }).catch(() => {});
+      }
+    }
+
+    await salonLoups.send(
+      `🐺 **Salon secret des Loups-Garous**\n\n${loups.map(l => userMention(l.user.id)).join(" ")}\n\nVous êtes les loups ! Concertez-vous ici chaque nuit. 🤫`
+    ).catch(() => {});
+  }
+
+  // ── Envoyer les rôles en MP ──
   const results = await Promise.all(
     assignments.map(async ({ user, roleKey }) => {
       const role = ROLES[roleKey];
@@ -69,7 +116,7 @@ async function lancerPartie(message: Message, players: User[]) {
         .setDescription(role.description)
         .addFields(
           { name: "⚔️ Camp", value: `${campEmoji} **${role.camp}**`, inline: true },
-          { name: "📍 Serveur", value: message.guild?.name ?? "Inconnu", inline: true }
+          { name: "📍 Serveur", value: guild.name, inline: true }
         )
         .setFooter({ text: "Bonne chance… et méfie-toi des loups 🐺" })
         .setTimestamp();
@@ -82,18 +129,20 @@ async function lancerPartie(message: Message, players: User[]) {
     })
   );
 
+  // ── Récap privé pour le host ──
   try {
     const recapLines = results.map(({ user, roleKey }) => {
       const role = ROLES[roleKey];
       return `${CAMP_COLORS[role.camp] ?? "⬜"} **${user.username}** → ${role.nom}`;
     });
     await message.author.send(
-      `📋 **Récap des rôles — ${message.guild?.name}**\n\n${recapLines.join("\n")}\n\n🤫 Ne partage pas cette liste !`
+      `📋 **Récap des rôles — ${guild.name}**\n\n${recapLines.join("\n")}\n\n🤫 Ne partage pas cette liste !`
     );
-  } catch { /* MP fermés du lanceur */ }
+  } catch {}
 
-  const nbLoups = assignments.filter(a => ["LOUP_GAROU", "LOUP_BAVARD", "LOUP_NOIR"].includes(a.roleKey)).length;
+  const nbLoups = loups.length;
   const hasLoupBlanc = assignments.some(a => a.roleKey === "LOUP_BLANC");
+  const hasSerialKiller = assignments.some(a => a.roleKey === "SERIAL_KILLER");
 
   const summaryEmbed = new EmbedBuilder()
     .setColor(0x2c2f33)
@@ -102,17 +151,47 @@ async function lancerPartie(message: Message, players: User[]) {
       `Partie lancée avec **${players.length} joueurs** !\n` +
       `Chaque joueur a reçu son rôle en MP.\n\n` +
       `🐺 Il y a **${nbLoups} loup${nbLoups > 1 ? "s" : ""}** parmi vous…` +
-      (hasLoupBlanc ? "\n⚠️ Un joueur joue pour lui-même…" : "")
+      (hasLoupBlanc ? "\n⚠️ Un joueur joue pour lui-même…" : "") +
+      (hasSerialKiller ? "\n🔪 Un tueur en série rôde dans le village…" : "")
     )
     .addFields({ name: "📬 Envois des rôles", value: results.map(r => r.mention).join("\n") })
-    .setFooter({ text: "Que le meilleur camp gagne !" })
+    .setFooter({ text: "Bonne chance ! Utilisez *finpartie pour terminer la partie." })
     .setTimestamp();
 
   await message.channel.send({ embeds: [summaryEmbed] });
 }
 
-// Empêche plusieurs lobbies simultanés par salon
-const lobbiesActifs = new Set<string>();
+async function terminerPartie(message: Message, players: User[]) {
+  const guild = message.guild!;
+
+  // ── Retirer le rôle décoratif ──
+  const decoratifRole = guild.roles.cache.get(DECORATIF_ROLE_ID);
+  if (decoratifRole) {
+    for (const user of players) {
+      const member = await guild.members.fetch(user.id).catch(() => null);
+      if (member) await member.roles.remove(decoratifRole).catch(() => {});
+    }
+  }
+
+  // ── Retirer les permissions du salon loups ──
+  const salonLoups = guild.channels.cache.get(SALON_LOUPS_ID) as TextChannel | undefined;
+  if (salonLoups) {
+    for (const user of players) {
+      await salonLoups.permissionOverwrites.delete(user.id).catch(() => {});
+    }
+    await salonLoups.send("🔒 La partie est terminée. Ce salon est maintenant fermé.").catch(() => {});
+  }
+
+  await message.channel.send(
+    new EmbedBuilder()
+      .setColor(0x555555)
+      .setTitle("🏁 Partie terminée !")
+      .setDescription("Les rôles décoratifs ont été retirés et le salon des loups est fermé.")
+      .setTimestamp()
+  ).catch(() => {});
+}
+
+const lobbiesActifs = new Map<string, User[]>();
 
 function makeLobbyEmbed(host: User, players: Map<string, User>) {
   const liste = players.size > 0
@@ -125,22 +204,19 @@ function makeLobbyEmbed(host: User, players: Map<string, User>) {
     .setDescription(
       `**${host.username}** ouvre une partie !\n\n` +
       `Clique sur ✅ pour rejoindre la partie.\nQuand tout le monde est là, ${userMention(host.id)} *(maître du jeu)* clique sur 🚀 pour lancer.\n\n` +
-      `> Min. **3 joueurs** — Max. **20 joueurs**`
+      `> Min. **3 joueurs** — Max. **30 joueurs**`
     )
-    .addFields(
-      { name: `👥 Joueurs (${players.size})`, value: liste },
-    )
+    .addFields({ name: `👥 Joueurs (${players.size})`, value: liste })
     .setFooter({ text: "✅ rejoindre • 🚀 lancer (host uniquement)" })
     .setTimestamp();
 }
 
 export const loupgarouCommand: Command = {
   name: "loupgarou",
-  description: "Ouvre un lobby Loup-Garou. Les joueurs rejoignent en cliquant sur ✅.",
+  description: "Ouvre un lobby Loup-Garou.",
   usage: "*loupgarou",
 
   async execute(message) {
-    // Réservé aux admins/modérateurs
     if (!message.member || !isModerator(message.member)) {
       await message.reply("❌ Seuls les modérateurs peuvent lancer une partie de Loup-Garou.");
       return;
@@ -151,11 +227,9 @@ export const loupgarouCommand: Command = {
       return;
     }
 
-    lobbiesActifs.add(message.channelId);
     const host = message.author;
-
-    // Le host n'est PAS auto-ajouté — il doit cliquer ✅ comme tout le monde s'il veut jouer
     const players = new Map<string, User>();
+    lobbiesActifs.set(message.channelId, []);
 
     const lobbyMsg = await message.channel.send({
       embeds: [makeLobbyEmbed(host, players)],
@@ -171,9 +245,10 @@ export const loupgarouCommand: Command = {
 
     const lancer = async () => {
       collector.stop("launched");
-      lobbiesActifs.delete(message.channelId);
+      lobbiesActifs.set(message.channelId, [...players.values()]);
 
       if (players.size < 3) {
+        lobbiesActifs.delete(message.channelId);
         await message.channel.send("❌ Pas assez de joueurs pour lancer (minimum 3).");
         await lobbyMsg.edit({
           embeds: [
@@ -187,8 +262,8 @@ export const loupgarouCommand: Command = {
         return;
       }
 
-      if (players.size > 20) {
-        await message.channel.send("❌ Trop de joueurs (maximum 20).");
+      if (players.size > 30) {
+        await message.channel.send("❌ Trop de joueurs (maximum 30).");
         return;
       }
 
@@ -207,12 +282,11 @@ export const loupgarouCommand: Command = {
 
     collector.on("collect", async (reaction, user) => {
       if (reaction.emoji.name === "✅") {
-        // Le host est maître du jeu, il ne peut pas jouer
         if (user.id === host.id) {
           await reaction.users.remove(user.id).catch(() => {});
           return;
         }
-        if (players.size >= 20) {
+        if (players.size >= 30) {
           await reaction.users.remove(user.id).catch(() => {});
           return;
         }
@@ -236,8 +310,8 @@ export const loupgarouCommand: Command = {
     });
 
     collector.on("end", async (_, reason) => {
-      lobbiesActifs.delete(message.channelId);
       if (reason !== "launched") {
+        lobbiesActifs.delete(message.channelId);
         await lobbyMsg.edit({
           embeds: [
             new EmbedBuilder()
@@ -249,5 +323,26 @@ export const loupgarouCommand: Command = {
         }).catch(() => {});
       }
     });
+  },
+};
+
+export const finpartieCommand: Command = {
+  name: "finpartie",
+  description: "Terminer une partie de Loup-Garou",
+  usage: "*finpartie",
+  async execute(message) {
+    if (!message.member || !isModerator(message.member)) {
+      await message.reply("❌ Seuls les modérateurs peuvent terminer la partie.");
+      return;
+    }
+
+    const players = lobbiesActifs.get(message.channelId);
+    if (!players || players.length === 0) {
+      await message.reply("❌ Aucune partie en cours dans ce salon.");
+      return;
+    }
+
+    lobbiesActifs.delete(message.channelId);
+    await terminerPartie(message, players);
   },
 };
