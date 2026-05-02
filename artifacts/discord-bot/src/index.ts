@@ -26,6 +26,7 @@ import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
 import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
+import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
 import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
 import { giveawayCommand, rerollCommand } from "./commands/giveaway.js";
@@ -73,6 +74,7 @@ for (const cmd of [
  giveawayCommand,
  rerollCommand,
  pollCommand,
+ ticketCommand,
 ]) {
  commands.set(cmd.name, cmd);
 }
@@ -149,6 +151,7 @@ client.once(Events.ClientReady, (c) => {
 client.on(Events.InteractionCreate, async (interaction) => {
  try {
    await handleConfessionInteraction(interaction);
+   await handleTicketInteraction(interaction);
  } catch (err) {
    console.error("Erreur interaction:", err);
  }

@@ -93,6 +93,19 @@ const FICHES: Record<string, EmbedBuilder> = {
     )
     .setFooter({ text: "Commande : *poll" }),
 
+  ticket: new EmbedBuilder()
+    .setColor(0x5865f2)
+    .setTitle("🎫 Tickets — Explication")
+    .setDescription("Système de tickets avec 3 catégories. Un fil privé est créé pour chaque ticket.")
+    .addFields(
+      { name: "`*ticket setup`", value: "Initialise le panneau de tickets dans ce salon (modo uniquement)." },
+      { name: "🎯 Candidature", value: "Ouvre un ticket staff. Pinge l'équipe de gestion staff." },
+      { name: "👑 Owner", value: "Ouvre un ticket privé. Pinge l'owner directement." },
+      { name: "⚠️ Signaler un abus", value: "Ouvre un ticket signalement. Pinge l'équipe gestion abus." },
+      { name: "🔒 Fermeture", value: "L'auteur du ticket ou un modo peut fermer le ticket (bouton dans le fil)." },
+    )
+    .setFooter({ text: "Commande : *ticket setup" }),
+
   confess: new EmbedBuilder()
     .setColor(0x2f3136)
     .setTitle("🕵️ Confessions — Explication")
