@@ -103,7 +103,7 @@ async function lancerPartie(message: Message, players: User[]) {
 // Empêche plusieurs lobbies simultanés par salon
 const lobbiesActifs = new Set<string>();
 
-function makeLobbyEmbed(host: User, players: Map<string, User>, tempsRestant: string) {
+function makeLobbyEmbed(host: User, players: Map<string, User>) {
   const liste = players.size > 0
     ? [...players.values()].map(u => `• ${userMention(u.id)}`).join("\n")
     : "*Personne pour l'instant…*";
@@ -113,13 +113,11 @@ function makeLobbyEmbed(host: User, players: Map<string, User>, tempsRestant: st
     .setTitle("🕵️ Lobby Undercover")
     .setDescription(
       `**${host.username}** ouvre une partie !\n\n` +
-      `Rejoins en cliquant sur ✅ ci-dessous.\nQuand tout le monde est là, ${userMention(host.id)} clique sur 🚀 pour lancer.\n\n` +
+      `Clique sur ✅ pour rejoindre.\nQuand tout le monde est là, ${userMention(host.id)} clique sur 🚀 pour lancer.\n\n` +
       `> Min. **3 joueurs** — Max. **12 joueurs**`
     )
-    .addFields(
-      { name: `👥 Joueurs (${players.size})`, value: liste },
-    )
-    .setFooter({ text: `⏱️ Lobby actif encore ${tempsRestant} • ✅ rejoindre • 🚀 lancer (host uniquement)` })
+    .addFields({ name: `👥 Joueurs (${players.size})`, value: liste })
+    .setFooter({ text: "✅ rejoindre • 🚀 lancer (host uniquement)" })
     .setTimestamp();
 }
 
@@ -135,14 +133,11 @@ export const undercoverCommand: Command = {
     }
 
     lobbiesActifs.add(message.channelId);
-    const DUREE_MS = 5 * 60 * 1000; // 5 minutes
     const host = message.author;
-
     const players = new Map<string, User>();
-    players.set(host.id, host);
 
     const lobbyMsg = await message.channel.send({
-      embeds: [makeLobbyEmbed(host, players, "5 min")],
+      embeds: [makeLobbyEmbed(host, players)],
     });
 
     await lobbyMsg.react("✅");
@@ -150,7 +145,6 @@ export const undercoverCommand: Command = {
 
     const collector = lobbyMsg.createReactionCollector({
       filter: (reaction, user) => !user.bot && ["✅", "🚀"].includes(reaction.emoji.name ?? ""),
-      time: DUREE_MS,
       dispose: true,
     });
 
@@ -161,8 +155,14 @@ export const undercoverCommand: Command = {
       if (players.size < 3) {
         await message.channel.send("❌ Pas assez de joueurs pour lancer (minimum 3).");
         await lobbyMsg.edit({
-          embeds: [makeLobbyEmbed(host, players, "expiré").setColor(0x555555).setTitle("🕵️ Lobby annulé")],
-        });
+          embeds: [
+            new EmbedBuilder()
+              .setColor(0x555555)
+              .setTitle("🕵️ Lobby annulé")
+              .setDescription("Pas assez de joueurs. Refais `*undercover` pour réessayer.")
+              .setTimestamp(),
+          ],
+        }).catch(() => {});
         return;
       }
 
@@ -184,14 +184,6 @@ export const undercoverCommand: Command = {
       await lancerPartie(message, [...players.values()]);
     };
 
-    // Minuterie pour mettre à jour le footer toutes les minutes
-    const intervals = [4, 3, 2, 1].map(min =>
-      setTimeout(() => {
-        if (collector.ended) return;
-        lobbyMsg.edit({ embeds: [makeLobbyEmbed(host, players, `${min} min`)] }).catch(() => {});
-      }, (5 - min) * 60 * 1000)
-    );
-
     collector.on("collect", async (reaction, user) => {
       if (reaction.emoji.name === "✅") {
         if (players.size >= 12) {
@@ -199,14 +191,13 @@ export const undercoverCommand: Command = {
           return;
         }
         players.set(user.id, user);
-        await lobbyMsg.edit({ embeds: [makeLobbyEmbed(host, players, "…")] }).catch(() => {});
+        await lobbyMsg.edit({ embeds: [makeLobbyEmbed(host, players)] }).catch(() => {});
       }
       if (reaction.emoji.name === "🚀") {
         if (user.id !== host.id) {
           await reaction.users.remove(user.id).catch(() => {});
           return;
         }
-        intervals.forEach(clearTimeout);
         await lancer();
       }
     });
@@ -214,20 +205,19 @@ export const undercoverCommand: Command = {
     collector.on("remove", async (reaction, user) => {
       if (reaction.emoji.name === "✅" && user.id !== host.id) {
         players.delete(user.id);
-        await lobbyMsg.edit({ embeds: [makeLobbyEmbed(host, players, "…")] }).catch(() => {});
+        await lobbyMsg.edit({ embeds: [makeLobbyEmbed(host, players)] }).catch(() => {});
       }
     });
 
     collector.on("end", async (_, reason) => {
-      intervals.forEach(clearTimeout);
       lobbiesActifs.delete(message.channelId);
-      if (reason === "time") {
+      if (reason !== "launched") {
         await lobbyMsg.edit({
           embeds: [
             new EmbedBuilder()
               .setColor(0x555555)
-              .setTitle("🕵️ Lobby expiré")
-              .setDescription("Le lobby a expiré sans être lancé. Refais `*undercover` pour en ouvrir un nouveau.")
+              .setTitle("🕵️ Lobby fermé")
+              .setDescription("Le lobby a été fermé. Refais `*undercover` pour en ouvrir un nouveau.")
               .setTimestamp(),
           ],
         }).catch(() => {});

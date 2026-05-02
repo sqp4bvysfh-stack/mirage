@@ -328,21 +328,14 @@ export const loupgarouCommand: Command = {
 
 export const finpartieCommand: Command = {
   name: "finpartie",
-  description: "Terminer une partie de Loup-Garou",
+  description: "Réinitialiser le lobby Loup-Garou du salon",
   usage: "*finpartie",
   async execute(message) {
     if (!message.member || !isModerator(message.member)) {
-      await message.reply("❌ Seuls les modérateurs peuvent terminer la partie.");
+      await message.reply("❌ Seuls les modérateurs peuvent utiliser cette commande.");
       return;
     }
-
-    const players = lobbiesActifs.get(message.channelId);
-    if (!players || players.length === 0) {
-      await message.reply("❌ Aucune partie en cours dans ce salon.");
-      return;
-    }
-
     lobbiesActifs.delete(message.channelId);
-    await terminerPartie(message, players);
+    await message.reply("✅ Partie terminée ! Le salon est libre pour une nouvelle partie.");
   },
 };
