@@ -138,12 +138,12 @@ export async function handleTicketInteraction(interaction: Interaction) {
     openTickets.delete(`${userId}_${type}`);
 
     await interaction.reply({
-      content: `🔒 Ticket fermé par ${interaction.user}. Ce fil sera archivé dans 5 secondes.`,
+      content: `🔒 Ticket fermé par ${interaction.user}. Ce fil sera supprimé dans 5 secondes.`,
     });
 
     setTimeout(async () => {
       if (interaction.channel?.isThread()) {
-        await interaction.channel.setArchived(true).catch(() => {});
+        await interaction.channel.delete().catch(() => {});
       }
     }, 5000);
     return;
