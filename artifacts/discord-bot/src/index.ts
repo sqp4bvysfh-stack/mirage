@@ -8,7 +8,7 @@ import { pingCommand } from "./commands/ping.js";
 import { aideCommand } from "./commands/aide.js";
 import { infoCommand } from "./commands/info.js";
 import { loupgarouCommand } from "./commands/loupgarou.js";
-import { rolesCommand } from "./commands/roles.js"; // ⚠️ Loup-garou
+import { rolesCommand } from "./commands/roles.js";
 import { roleaddCommand } from "./commands/roleadd.js";
 import { roleremoveCommand } from "./commands/roleremove.js";
 import { sayCommand } from "./commands/say.js";
@@ -26,6 +26,8 @@ import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
 import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
+import { clearCommand } from "./commands/clear.js";
+import { lockCommand, unlockCommand } from "./commands/lock.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -44,7 +46,7 @@ for (const cmd of [
   aideCommand,
   infoCommand,
   loupgarouCommand,
-  rolesCommand, // ✅ ton loup-garou
+  rolesCommand,
   roleaddCommand,
   roleremoveCommand,
   sayCommand,
@@ -61,7 +63,10 @@ for (const cmd of [
   unmuteCommand,
   unbanCommand,
   iaCommand,
-  confessionCommand
+  confessionCommand,
+  clearCommand,
+  lockCommand,
+  unlockCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -92,7 +97,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
   const guildId = member.guild.id;
   const now = Date.now();
 
-  const joins = (joinTracker.get(guildId) || []).filter(t => now - t < RAID_WINDOW_MS);
+  const joins = (joinTracker.get(guildId) || []).filter((t: number) => now - t < RAID_WINDOW_MS);
   joins.push(now);
   joinTracker.set(guildId, joins);
 
@@ -108,7 +113,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
 client.on(Events.GuildMemberAdd, async (member) => {
   const salon = member.guild.channels.cache.get("1476532494768672850");
   if (salon && salon.isTextBased()) {
-    salon.send(`## Bienvenue ${member}`).catch(() => {});
+    salon.send(`👋 Bienvenue ${member}`).catch(() => {});
   }
 });
 
