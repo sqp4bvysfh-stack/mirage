@@ -49,8 +49,8 @@ function getRoleDistribution(count: number): RoleKey[] {
   if (count >= 16) roles.push("LOUP_BLANC");
   if (count >= 18) roles.push("LOUP_BAVARD");
   if (count >= 20) roles.push("LOUP_NOIR");
-  if (count >= 22) roles.push("NAIN");
-  if (count >= 25) roles.push("SERIAL_KILLER");
+  if (count >= 21) roles.push("NAIN");
+  if (count >= 21) roles.push("SERIAL_KILLER");
   while (roles.length < count) roles.push("VILLAGEOIS");
   return roles;
 }
@@ -328,14 +328,19 @@ export const loupgarouCommand: Command = {
 
 export const finpartieCommand: Command = {
   name: "finpartie",
-  description: "Réinitialiser le lobby Loup-Garou du salon",
+  description: "Terminer la partie Loup-Garou en cours (retire les rôles et ferme les salons)",
   usage: "*finpartie",
   async execute(message) {
     if (!message.member || !isModerator(message.member)) {
       await message.reply("❌ Seuls les modérateurs peuvent utiliser cette commande.");
       return;
     }
+    const players = lobbiesActifs.get(message.channelId);
+    if (!players) {
+      await message.reply("❌ Aucune partie en cours dans ce salon.");
+      return;
+    }
     lobbiesActifs.delete(message.channelId);
-    await message.reply("✅ Partie terminée ! Le salon est libre pour une nouvelle partie.");
+    await terminerPartie(message, players);
   },
 };
