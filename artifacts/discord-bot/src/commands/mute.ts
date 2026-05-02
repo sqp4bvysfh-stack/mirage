@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
-import { isModerator } from "../utils/modCheck.js";
+import { isModerator, canActOn } from "../utils/modCheck.js";
 
 function parseDuration(str: string): number | null {
   const match = str.match(/^(\d+)(s|m|h|j)$/);
@@ -26,6 +26,10 @@ export const muteCommand: Command = {
     const target = message.mentions.members?.first();
     if (!target) {
       await message.reply("❌ Mentionne un membre. Ex: `*mute @membre 10m raison`");
+      return;
+    }
+    if (!canActOn(message.member!, target)) {
+      await message.reply("❌ Tu ne peux pas sanctionner quelqu'un de ton niveau ou au-dessus de toi dans la hiérarchie.");
       return;
     }
 

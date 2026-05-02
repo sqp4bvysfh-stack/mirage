@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
-import { isModerator } from "../utils/modCheck.js";
+import { isModerator, canActOn } from "../utils/modCheck.js";
 
 function parseDuration(str: string): number | null {
   const match = str.match(/^(\d+)(m|h|j)$/);
@@ -30,6 +30,10 @@ export const tempbanCommand: Command = {
     const duration = durStr ? parseDuration(durStr) : null;
     if (!duration) {
       await message.reply("❌ Durée invalide. Utilise `30m`, `1h`, `2j`, etc.");
+      return;
+    }
+    if (!canActOn(message.member!, target)) {
+      await message.reply("❌ Tu ne peux pas sanctionner quelqu'un de ton niveau ou au-dessus de toi dans la hiérarchie.");
       return;
     }
     if (!target.bannable) {

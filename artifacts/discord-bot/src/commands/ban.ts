@@ -1,6 +1,6 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
-import { isModerator } from "../utils/modCheck.js";
+import { isModerator, canActOn } from "../utils/modCheck.js";
 
 export const banCommand: Command = {
   name: "ban",
@@ -14,6 +14,10 @@ export const banCommand: Command = {
     const target = message.mentions.members?.first();
     if (!target) {
       await message.reply("❌ Mentionne un membre. Ex: `*ban @membre raison`");
+      return;
+    }
+    if (!canActOn(message.member!, target)) {
+      await message.reply("❌ Tu ne peux pas sanctionner quelqu'un de ton niveau ou au-dessus de toi dans la hiérarchie.");
       return;
     }
     if (!target.bannable) {
