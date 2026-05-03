@@ -96,13 +96,13 @@ const FICHES: Record<string, EmbedBuilder> = {
   ticket: new EmbedBuilder()
     .setColor(0x5865f2)
     .setTitle("🎫 Tickets — Explication")
-    .setDescription("Système de tickets avec 3 catégories. Un fil privé est créé pour chaque ticket.")
+    .setDescription("Système de tickets avec 3 catégories. Un salon privé est créé pour chaque ticket.")
     .addFields(
       { name: "`*ticket setup`", value: "Initialise le panneau de tickets dans ce salon (modo uniquement)." },
       { name: "🎯 Candidature", value: "Ouvre un ticket staff. Pinge l'équipe de gestion staff." },
       { name: "👑 Owner", value: "Ouvre un ticket privé. Pinge l'owner directement." },
       { name: "⚠️ Signaler un abus", value: "Ouvre un ticket signalement. Pinge l'équipe gestion abus." },
-      { name: "🔒 Fermeture", value: "L'auteur du ticket ou un modo peut fermer le ticket (bouton dans le fil)." },
+      { name: "🔒 Fermeture", value: "L'auteur du ticket ou un modo peut fermer le ticket (bouton dans le salon)." },
     )
     .setFooter({ text: "Commande : *ticket setup" }),
 
@@ -207,6 +207,7 @@ export const aideCommand: Command = {
         { name: "`*reroll <ID>`", value: "Relance le tirage d'un giveaway.", inline: false },
         { name: "`*poll \"question\" \"choix1\" ...`", value: "Crée un sondage (max 10 choix).", inline: false },
         { name: "`*confess setup`", value: "Initialise le système de confessions anonymes.", inline: false },
+        { name: "`*ticket setup`", value: "Initialise le panneau de tickets (modo).", inline: false },
       )
       .setFooter({ text: `💡 Tape *aide [commande] pour les détails • ${LISTE_SOUS_COMMANDES}` });
 

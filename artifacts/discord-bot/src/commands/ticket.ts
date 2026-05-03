@@ -15,40 +15,38 @@ const STAFF_ROLE_ID = "1476396219314995331";
 const OWNER_ID      = "1476499085748862986";
 const ABUS_ROLE_ID  = "1476397435117899816";
 
-// ── Mets ici l'ID de la catégorie où créer les tickets (optionnel) ──────────
-// Laisse null si tu ne veux pas de catégorie
 const TICKET_CATEGORY_ID: string | null = null;
 
 const TICKET_CONFIG = {
   candidature: {
-    label: "🎯 Candidature",
-    color: 0x2ecc71 as number,
+    label:       "🎯 Candidature",
+    color:       0x2ecc71 as number,
     pingContent: `<@&${STAFF_ROLE_ID}>`,
     staffRoleId: STAFF_ROLE_ID,
-    title: "🎯 Candidature Staff",
-    intro: "Présente ta candidature ici. L'équipe staff te répondra dès que possible.\n\nIndique ton âge, ta disponibilité et pourquoi tu veux rejoindre le staff.",
+    title:       "🎯 Candidature Staff",
+    intro:       "Présente ta candidature ici. L'équipe staff te répondra dès que possible.\n\nIndique ton âge, ta disponibilité et pourquoi tu veux rejoindre le staff.",
   },
   owner: {
-    label: "👑 Owner",
-    color: 0xf1c40f as number,
+    label:       "👑 Owner",
+    color:       0xf1c40f as number,
     pingContent: `<@${OWNER_ID}>`,
     staffRoleId: null,
-    title: "👑 Contact Owner",
-    intro: "L'owner a été notifié et va te répondre dès que possible.\n\nExplique l'objet de ta demande.",
+    title:       "👑 Contact Owner",
+    intro:       "L'owner a été notifié et va te répondre dès que possible.\n\nExplique l'objet de ta demande.",
   },
   abus: {
-    label: "⚠️ Abus",
-    color: 0xe74c3c as number,
+    label:       "⚠️ Abus",
+    color:       0xe74c3c as number,
     pingContent: `<@&${ABUS_ROLE_ID}>`,
     staffRoleId: ABUS_ROLE_ID,
-    title: "⚠️ Signalement d'abus",
-    intro: "Ton signalement a été transmis à l'équipe.\n\nDécris les faits avec le plus de détails possible (pseudo, date, preuve si disponible).",
+    title:       "⚠️ Signalement d'abus",
+    intro:       "Ton signalement a été transmis à l'équipe.\n\nDécris les faits avec le plus de détails possible (pseudo, date, preuve si disponible).",
   },
 } as const;
 
 type TicketType = keyof typeof TICKET_CONFIG;
 
-const openTickets = new Map<string, string>(); // key → channelId
+const openTickets = new Map<string, string>();
 
 function makeCloseRow(type: TicketType, userId: string) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -81,8 +79,7 @@ export async function handleTicketInteraction(interaction: Interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-      // Permission overwrites : @everyone ne voit pas, le créateur et le staff oui
-      const permissionOverwrites: Parameters<typeof interaction.guild.channels.create>[0]["permissionOverwrites"] = [
+      const permissionOverwrites = [
         {
           id: interaction.guild.roles.everyone,
           deny: [PermissionFlagsBits.ViewChannel],
@@ -105,20 +102,18 @@ export async function handleTicketInteraction(interaction: Interaction) {
             PermissionFlagsBits.ManageChannels,
           ],
         },
+        ...(cfg.staffRoleId
+          ? [{
+              id: cfg.staffRoleId,
+              allow: [
+                PermissionFlagsBits.ViewChannel,
+                PermissionFlagsBits.SendMessages,
+                PermissionFlagsBits.ReadMessageHistory,
+                PermissionFlagsBits.AttachFiles,
+              ],
+            }]
+          : []),
       ];
-
-      // Ajouter le rôle staff si défini pour cette catégorie
-      if (cfg.staffRoleId) {
-        permissionOverwrites.push({
-          id: cfg.staffRoleId,
-          allow: [
-            PermissionFlagsBits.ViewChannel,
-            PermissionFlagsBits.SendMessages,
-            PermissionFlagsBits.ReadMessageHistory,
-            PermissionFlagsBits.AttachFiles,
-          ],
-        });
-      }
 
       const channelName = `ticket-${type}-${interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
 
@@ -162,12 +157,12 @@ export async function handleTicketInteraction(interaction: Interaction) {
 
   // ─── Fermeture ────────────────────────────────────────────────────────────
   if (interaction.isButton() && interaction.customId.startsWith("tkt_close_")) {
-    const parts  = interaction.customId.split("_"); // tkt_close_type_userId
+    const parts  = interaction.customId.split("_");
     const type   = parts[2] as TicketType;
     const userId = parts[3];
 
-    const member = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
-    const isMod  = member ? isModerator(member) : false;
+    const member   = await interaction.guild.members.fetch(interaction.user.id).catch(() => null);
+    const isMod    = member ? isModerator(member) : false;
     const isAuthor = interaction.user.id === userId;
 
     if (!isMod && !isAuthor) {
