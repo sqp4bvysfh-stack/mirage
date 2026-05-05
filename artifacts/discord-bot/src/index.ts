@@ -27,6 +27,8 @@ import { unbanCommand } from "./commands/unban.js";
 import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
+import { originesCommand, ORIGINES_CONFIG, originesState } from "./commands/origines.js";
+import { handleAideInteraction } from "./commands/aide.js";
 import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
 import { giveawayCommand, rerollCommand } from "./commands/giveaway.js";
@@ -75,6 +77,7 @@ for (const cmd of [
   rerollCommand,
   pollCommand,
   ticketCommand,
+  originesCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -154,9 +157,40 @@ client.on(Events.InteractionCreate, async (interaction) => {
   try {
     await handleConfessionInteraction(interaction);
     await handleTicketInteraction(interaction);
+    await handleAideInteraction(interaction);
   } catch (err) {
     console.error("Erreur interaction:", err);
   }
+});
+
+// ─── ORIGINES — réaction ajoutée ─────────────────────────
+client.on(Events.MessageReactionAdd, async (reaction, user) => {
+  if (user.bot) return;
+  if (!originesState.panelId || reaction.message.id !== originesState.panelId) return;
+
+  const cfg = ORIGINES_CONFIG.find(o => o.emoji === reaction.emoji.name);
+  if (!cfg || cfg.roleId.startsWith("ROLE_ID_")) return;
+
+  const guild  = reaction.message.guild;
+  const member = await guild?.members.fetch(user.id).catch(() => null);
+  if (!member) return;
+
+  await member.roles.add(cfg.roleId).catch(() => {});
+});
+
+// ─── ORIGINES — réaction retirée ─────────────────────────
+client.on(Events.MessageReactionRemove, async (reaction, user) => {
+  if (user.bot) return;
+  if (!originesState.panelId || reaction.message.id !== originesState.panelId) return;
+
+  const cfg = ORIGINES_CONFIG.find(o => o.emoji === reaction.emoji.name);
+  if (!cfg || cfg.roleId.startsWith("ROLE_ID_")) return;
+
+  const guild  = reaction.message.guild;
+  const member = await guild?.members.fetch(user.id).catch(() => null);
+  if (!member) return;
+
+  await member.roles.remove(cfg.roleId).catch(() => {});
 });
 
 // ─── MESSAGES ────────────────────────────────────────────

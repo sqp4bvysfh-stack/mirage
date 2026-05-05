@@ -6,7 +6,7 @@ import {
   ChannelType,
   PermissionFlagsBits,
   type Interaction,
-  type TextChannel,
+  type GuildTextBasedChannel,
 } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
@@ -15,32 +15,36 @@ const STAFF_ROLE_ID = "1476396219314995331";
 const OWNER_ID      = "1476499085748862986";
 const ABUS_ROLE_ID  = "1476397435117899816";
 
-const TICKET_CATEGORY_ID: string | null = null;
-
 const TICKET_CONFIG = {
   candidature: {
-    label:       "🎯 Candidature",
-    color:       0x2ecc71 as number,
-    pingContent: `<@&${STAFF_ROLE_ID}>`,
-    staffRoleId: STAFF_ROLE_ID,
-    title:       "🎯 Candidature Staff",
-    intro:       "Présente ta candidature ici. L'équipe staff te répondra dès que possible.\n\nIndique ton âge, ta disponibilité et pourquoi tu veux rejoindre le staff.",
+    label:         "🎯 Candidature",
+    color:         0x2ecc71 as number,
+    ping:          `<@&${STAFF_ROLE_ID}>`,
+    pingId:        STAFF_ROLE_ID,
+    isUser:        false,
+    title:         "🎯 Candidature Staff",
+    intro:         "Présente ta candidature ici. L'équipe staff te répondra dès que possible.\n\nIndique ton âge, ta disponibilité et pourquoi tu veux rejoindre le staff.",
+    channelPrefix: "candidature",
   },
   owner: {
-    label:       "👑 Owner",
-    color:       0xf1c40f as number,
-    pingContent: `<@${OWNER_ID}>`,
-    staffRoleId: null,
-    title:       "👑 Contact Owner",
-    intro:       "L'owner a été notifié et va te répondre dès que possible.\n\nExplique l'objet de ta demande.",
+    label:         "👑 Contacter l'Owner",
+    color:         0xf1c40f as number,
+    ping:          `<@${OWNER_ID}>`,
+    pingId:        OWNER_ID,
+    isUser:        true,
+    title:         "👑 Contact Owner",
+    intro:         "L'owner a été notifié et va te répondre dès que possible.\n\nExplique l'objet de ta demande.",
+    channelPrefix: "owner",
   },
   abus: {
-    label:       "⚠️ Abus",
-    color:       0xe74c3c as number,
-    pingContent: `<@&${ABUS_ROLE_ID}>`,
-    staffRoleId: ABUS_ROLE_ID,
-    title:       "⚠️ Signalement d'abus",
-    intro:       "Ton signalement a été transmis à l'équipe.\n\nDécris les faits avec le plus de détails possible (pseudo, date, preuve si disponible).",
+    label:         "⚠️ Signaler un abus",
+    color:         0xe74c3c as number,
+    ping:          `<@&${ABUS_ROLE_ID}>`,
+    pingId:        ABUS_ROLE_ID,
+    isUser:        false,
+    title:         "⚠️ Signalement d'abus",
+    intro:         "Ton signalement a été transmis à l'équipe.\n\nDécris les faits avec le plus de détails possible (pseudo, date, preuve si disponible).",
+    channelPrefix: "abus",
   },
 } as const;
 
@@ -79,50 +83,40 @@ export async function handleTicketInteraction(interaction: Interaction) {
     await interaction.deferReply({ ephemeral: true });
 
     try {
-      const permissionOverwrites = [
-        {
-          id: interaction.guild.roles.everyone,
-          deny: [PermissionFlagsBits.ViewChannel],
-        },
-        {
-          id: interaction.user.id,
-          allow: [
-            PermissionFlagsBits.ViewChannel,
-            PermissionFlagsBits.SendMessages,
-            PermissionFlagsBits.ReadMessageHistory,
-            PermissionFlagsBits.AttachFiles,
-          ],
-        },
-        {
-          id: interaction.guild.members.me!.id,
-          allow: [
-            PermissionFlagsBits.ViewChannel,
-            PermissionFlagsBits.SendMessages,
-            PermissionFlagsBits.ReadMessageHistory,
-            PermissionFlagsBits.ManageChannels,
-          ],
-        },
-        ...(cfg.staffRoleId
-          ? [{
-              id: cfg.staffRoleId,
-              allow: [
-                PermissionFlagsBits.ViewChannel,
-                PermissionFlagsBits.SendMessages,
-                PermissionFlagsBits.ReadMessageHistory,
-                PermissionFlagsBits.AttachFiles,
-              ],
-            }]
-          : []),
-      ];
+      const guild       = interaction.guild;
+      const panelChan   = interaction.channel as GuildTextBasedChannel;
+      const parentId    = "parentId" in panelChan ? panelChan.parentId : null;
+      const safeName    = interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 20);
+      const channelName = `${cfg.channelPrefix}-${safeName}`;
 
-      const channelName = `ticket-${type}-${interaction.user.username.toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-
-      const ticketChannel = await interaction.guild.channels.create({
+      const ticketChannel = await guild.channels.create({
         name: channelName,
         type: ChannelType.GuildText,
-        parent: TICKET_CATEGORY_ID ?? undefined,
-        permissionOverwrites,
-        reason: `Ticket ${type} — ${interaction.user.username}`,
+        parent: parentId ?? undefined,
+        permissionOverwrites: [
+          {
+            id: guild.roles.everyone.id,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
+          {
+            id: interaction.user.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory,
+              PermissionFlagsBits.AttachFiles,
+            ],
+          },
+          {
+            id: cfg.pingId,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.ReadMessageHistory,
+            ],
+          },
+        ],
+        reason: `Ticket ${type} — ${interaction.user.tag}`,
       });
 
       openTickets.set(key, ticketChannel.id);
@@ -135,21 +129,20 @@ export async function handleTicketInteraction(interaction: Interaction) {
           { name: "👤 Ouvert par", value: `${interaction.user}`, inline: true },
           { name: "📅 Ouvert le",  value: `<t:${Math.floor(Date.now() / 1000)}:F>`, inline: true },
         )
-        .setFooter({ text: "Clique sur 🔒 pour fermer et supprimer ce salon." })
+        .setFooter({ text: "Clique sur 🔒 pour fermer et supprimer ce ticket." })
         .setTimestamp();
 
-      await (ticketChannel as TextChannel).send({
-        content: `${cfg.pingContent} — nouveau ticket de ${interaction.user}`,
-        embeds: [embed],
+      await ticketChannel.send({
+        content: `${cfg.ping} — nouveau ticket de ${interaction.user}`,
+        embeds:  [embed],
         components: [makeCloseRow(type, interaction.user.id)],
       });
 
       await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${ticketChannel.id}>` });
 
-    } catch (err) {
-      console.error("Erreur création ticket:", err);
+    } catch {
       await interaction.editReply({
-        content: "❌ Impossible de créer le salon. Vérifie que le bot a la permission **Gérer les salons**.",
+        content: "❌ Impossible de créer le ticket. Vérifie que le bot a la permission **Gérer les salons**.",
       });
     }
     return;
@@ -180,16 +173,18 @@ export async function handleTicketInteraction(interaction: Interaction) {
     });
 
     setTimeout(async () => {
-      await interaction.channel?.delete().catch(() => {});
+      if (interaction.channel && "delete" in interaction.channel) {
+        await (interaction.channel as any).delete(`Ticket fermé par ${interaction.user.tag}`).catch(() => {});
+      }
     }, 5000);
     return;
   }
 }
 
 export const ticketCommand: Command = {
-  name: "ticket",
+  name:        "ticket",
   description: "Initialise le panneau de tickets dans ce salon",
-  usage: "*ticket setup",
+  usage:       "*ticket setup",
 
   execute: async (message) => {
     if (!message.member || !isModerator(message.member)) {
@@ -210,23 +205,14 @@ export const ticketCommand: Command = {
         "🎯 **Candidature** — Rejoindre l'équipe staff\n" +
         "👑 **Owner** — Message privé à l'owner\n" +
         "⚠️ **Abus** — Signaler un comportement abusif\n\n" +
-        "*Un salon privé sera créé, visible uniquement par toi et l'équipe concernée.*"
+        "*Un salon privé sera créé, visible uniquement par toi et l'équipe concernée.*",
       )
       .setFooter({ text: "Un seul ticket par catégorie à la fois." });
 
     const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
-      new ButtonBuilder()
-        .setCustomId("tkt_open_candidature")
-        .setLabel("🎯 Candidature")
-        .setStyle(ButtonStyle.Success),
-      new ButtonBuilder()
-        .setCustomId("tkt_open_owner")
-        .setLabel("👑 Owner")
-        .setStyle(ButtonStyle.Primary),
-      new ButtonBuilder()
-        .setCustomId("tkt_open_abus")
-        .setLabel("⚠️ Signaler un abus")
-        .setStyle(ButtonStyle.Danger),
+      new ButtonBuilder().setCustomId("tkt_open_candidature").setLabel("🎯 Candidature").setStyle(ButtonStyle.Success),
+      new ButtonBuilder().setCustomId("tkt_open_owner").setLabel("👑 Owner").setStyle(ButtonStyle.Primary),
+      new ButtonBuilder().setCustomId("tkt_open_abus").setLabel("⚠️ Signaler un abus").setStyle(ButtonStyle.Danger),
     );
 
     await message.channel.send({ embeds: [embed], components: [row] });
