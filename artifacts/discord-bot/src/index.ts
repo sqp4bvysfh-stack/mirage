@@ -27,7 +27,7 @@ import { unbanCommand } from "./commands/unban.js";
 import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
-import { originesCommand, originesState } from "./commands/origines.js";
+import { originesCommand, originesPanels } from "./commands/origines.js";
 import { handleAideInteraction } from "./commands/aide.js";
 import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
@@ -166,9 +166,10 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ─── ORIGINES — réaction ajoutée ─────────────────────────
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
-  if (!originesState.panelId || reaction.message.id !== originesState.panelId) return;
+  const config = originesPanels.get(reaction.message.id);
+  if (!config) return;
 
-  const cfg = originesState.config.find(o => o.emoji === reaction.emoji.name);
+  const cfg = config.find(o => o.emoji === reaction.emoji.name);
   if (!cfg) return;
 
   const guild  = reaction.message.guild;
@@ -181,9 +182,10 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 // ─── ORIGINES — réaction retirée ─────────────────────────
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
-  if (!originesState.panelId || reaction.message.id !== originesState.panelId) return;
+  const config = originesPanels.get(reaction.message.id);
+  if (!config) return;
 
-  const cfg = originesState.config.find(o => o.emoji === reaction.emoji.name);
+  const cfg = config.find(o => o.emoji === reaction.emoji.name);
   if (!cfg) return;
 
   const guild  = reaction.message.guild;

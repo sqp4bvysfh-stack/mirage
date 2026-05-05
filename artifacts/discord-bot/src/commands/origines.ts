@@ -2,21 +2,14 @@ import { EmbedBuilder, type Message } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
-// ─── État partagé avec index.ts ───────────────────────────────────────────
-export const originesState: {
-  panelId:   string | null;
-  channelId: string | null;
-  config:    { emoji: string; roleId: string }[];
-} = {
-  panelId:   null,
-  channelId: null,
-  config:    [],
-};
+// ─── État partagé — Map panelId → config ─────────────────────────────────
+// Supporte plusieurs panels simultanés (un par `*setup origines`)
+export const originesPanels = new Map<string, { emoji: string; roleId: string }[]>();
 
 // ─── Commande ─────────────────────────────────────────────────────────────
 export const originesCommand: Command = {
   name:        "setup",
-  description: "Initialise un panel interactif (ex: *setup origines)",
+  description: "Initialise un panel de rôles par réaction (ex: *setup origines)",
   usage:       "*setup origines",
 
   execute: async (message: Message, args) => {
@@ -30,22 +23,22 @@ export const originesCommand: Command = {
       return;
     }
 
-    // ── Étape 1 : demander les rôles ─────────────────────────────────────
+    // ── Étape 1 : demander les rôles ──────────────────────────────────────
     const prompt = await message.channel.send(
       "🌍 **Setup Origines**\n\n" +
-      "Mentionne tous les rôles d'origine que tu veux inclure dans le panel.\n" +
+      "Mentionne tous les rôles d'origine que tu veux inclure dans ce panel (max 20).\n" +
       "Exemple : `@🇫🇷 @🇲🇦 @🇩🇿 @🇧🇪`\n\n" +
       "*Tu as 60 secondes. Tape `annuler` pour quitter.*"
     );
 
-    // ── Étape 2 : attendre la réponse du modo ────────────────────────────
+    // ── Étape 2 : attendre la réponse ────────────────────────────────────
     let collected;
     try {
       collected = await message.channel.awaitMessages({
-        filter:  (m) => m.author.id === message.author.id,
-        max:     1,
-        time:    60_000,
-        errors:  ["time"],
+        filter: (m) => m.author.id === message.author.id,
+        max:    1,
+        time:   60_000,
+        errors: ["time"],
       });
     } catch {
       await prompt.delete().catch(() => {});
@@ -62,20 +55,17 @@ export const originesCommand: Command = {
       return;
     }
 
-    // ── Étape 3 : extraire les rôles mentionnés ──────────────────────────
-    const roles = [...reply.mentions.roles.values()];
+    // ── Étape 3 : extraire les rôles ─────────────────────────────────────
+    const roles = [...reply.mentions.roles.values()].slice(0, 20);
 
     if (roles.length === 0) {
       await message.reply("❌ Aucun rôle détecté. Assure-toi de mentionner les rôles avec @.");
       return;
     }
 
-    // Construire la config : nom du rôle = emoji du drapeau
-    originesState.config    = roles.map(r => ({ emoji: r.name, roleId: r.id }));
-    originesState.channelId = message.channelId;
-
     // ── Étape 4 : créer le panel ──────────────────────────────────────────
-    const lines = roles.map(r => `${r.name}  →  <@&${r.id}>`).join("\n");
+    const config = roles.map(r => ({ emoji: r.name, roleId: r.id }));
+    const lines  = roles.map(r => `${r.name}  →  <@&${r.id}>`).join("\n");
 
     const embed = new EmbedBuilder()
       .setColor(0x3498db)
@@ -88,12 +78,14 @@ export const originesCommand: Command = {
       .setFooter({ text: "Un seul rôle à la fois recommandé." });
 
     const panel = await message.channel.send({ embeds: [embed] });
-    originesState.panelId = panel.id;
 
-    for (const { emoji } of originesState.config) {
+    // Enregistrer ce panel dans la Map
+    originesPanels.set(panel.id, config);
+
+    for (const { emoji } of config) {
       await panel.react(emoji).catch(() => {});
     }
 
-    await message.reply(`✅ Panel des origines créé avec **${roles.length} origines** !`);
+    await message.reply(`✅ Panel créé avec **${roles.length} origines** ! Tu peux refaire \`*setup origines\` pour en créer un autre.`);
   },
 };
