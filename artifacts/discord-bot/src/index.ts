@@ -104,23 +104,46 @@ const client = new Client({
 });
 
 // ─── ANTI RAID ────────────────────────────────────────────
-const joinTracker = new Map();
 const RAID_THRESHOLD = 5;
-const RAID_WINDOW_MS = 10000;
+const RAID_WINDOW_MS = 10_000;
+const joinTracker = new Map<string, { time: number; memberId: string }[]>();
+const raidMode    = new Set<string>(); // guilds en mode raid actif
 
 client.on(Events.GuildMemberAdd, async (member) => {
   const guildId = member.guild.id;
-  const now = Date.now();
+  const now     = Date.now();
 
-  const joins = (joinTracker.get(guildId) || []).filter((t: number) => now - t < RAID_WINDOW_MS);
-  joins.push(now);
-  joinTracker.set(guildId, joins);
+  const recent = (joinTracker.get(guildId) ?? [])
+    .filter(e => now - e.time < RAID_WINDOW_MS);
+  recent.push({ time: now, memberId: member.id });
+  joinTracker.set(guildId, recent);
 
-  if (joins.length >= RAID_THRESHOLD) {
-    const channel = member.guild.systemChannel || member.guild.channels.cache.find(c => c.isTextBased());
-    if (channel && channel.isTextBased()) {
-      channel.send(`🚨 ALERTE RAID : ${joins.length} arrivées rapides`).catch(() => {});
+  if (recent.length >= RAID_THRESHOLD) {
+    // Kick tous les comptes récents (< 7 jours)
+    for (const { memberId } of recent) {
+      const m = await member.guild.members.fetch(memberId).catch(() => null);
+      if (!m) continue;
+      const ageDays = (now - m.user.createdTimestamp) / 86_400_000;
+      if (ageDays < 7) {
+        await m.kick("Anti-raid : compte récent").catch(() => {});
+      }
     }
+
+    if (!raidMode.has(guildId)) {
+      raidMode.add(guildId);
+      setTimeout(() => raidMode.delete(guildId), 30_000);
+
+      const alert = member.guild.systemChannel
+        ?? member.guild.channels.cache.find(c => c.isTextBased());
+      if (alert?.isTextBased()) {
+        alert.send(
+          `🚨 **ALERTE RAID DÉTECTÉE** — ${recent.length} arrivées en ${RAID_WINDOW_MS / 1000}s.\n` +
+          `Les comptes de moins de 7 jours ont été kick automatiquement.`
+        ).catch(() => {});
+      }
+    }
+
+    joinTracker.set(guildId, []);
   }
 });
 
@@ -208,8 +231,42 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 });
 
 // ─── MESSAGES ────────────────────────────────────────────
+// Codes d'invitation autorisés (sans le discord.gg/)
+const LIENS_AUTORISES = new Set(["mirg"]);
+const INVITE_REGEX = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
+
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
+
+  // ── ANTI LIEN ───────────────────────────────────────────────────────────
+  const isModoAntiLink =
+    message.member?.permissions.has("ManageMessages") ||
+    message.member?.permissions.has("Administrator");
+
+  if (!isModoAntiLink) {
+    const liens = [...message.content.matchAll(INVITE_REGEX)];
+    const hasLienInterdit = liens.some(m => !LIENS_AUTORISES.has(m[1].toLowerCase()));
+
+    if (hasLienInterdit) {
+      await message.delete().catch(() => {});
+      await message.channel.send(
+        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&${
+          message.guild?.roles.everyone.id ?? ""
+        }>\n> Les liens vers d'autres serveurs sont interdits ici.`
+      ).catch(() => {});
+
+      // Warn automatique
+      const warnCmd = commands.get("warn");
+      if (warnCmd && message.member) {
+        const fakeArgs = [message.author.id, "Lien Discord non autorisé (pub interdite)"];
+        const fakeMsg  = Object.create(message) as Message;
+        (fakeMsg as any).content = `*warn ${fakeArgs.join(" ")}`;
+        (fakeMsg as any).member  = message.guild?.members.me ?? message.member;
+        await warnCmd.execute(fakeMsg, fakeArgs).catch(() => {});
+      }
+      return;
+    }
+  }
 
   // IA mention
   if (client.user && message.mentions.has(client.user)) {
