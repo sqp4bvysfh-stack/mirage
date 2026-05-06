@@ -34,7 +34,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     embed: new EmbedBuilder()
       .setColor(0xe74c3c)
       .setTitle("🛡️ Modération")
-      .setDescription("Toutes les commandes de modération. Réservées aux modérateurs.\n⚠️ La hiérarchie est respectée — tu ne peux pas sanctionner quelqu'un au-dessus de toi.")
+      .setDescription("Réservées aux modérateurs. ⚠️ La hiérarchie est respectée — tu ne peux pas sanctionner quelqu'un au-dessus de toi.")
       .addFields(
         { name: "`*ban @membre [raison]`",            value: "Bannit définitivement." },
         { name: "`*unban [ID]`",                      value: "Débannit par ID." },
@@ -46,6 +46,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*clear [nombre]`",                  value: "Supprime des messages (max 100)." },
         { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon." },
         { name: "`*roleadd / *roleremove`",           value: "Ajouter / retirer un rôle à un membre." },
+        { name: "🚨 Anti-raid",                       value: "Automatique — kick les comptes < 7 jours si 5 arrivées en 10s." },
+        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique. Seul `discord.gg/mirg` est autorisé." },
       ),
   },
 
@@ -61,6 +63,9 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*reroll <ID message>`",                value: "Relance le tirage d'un giveaway sans conditions." },
         { name: "`*poll \"question\" \"choix1\" ...`",   value: "Crée un sondage (min 2, max 10 choix)." },
         { name: "`*confess setup`",                      value: "Initialise le salon de confessions anonymes." },
+        { name: "`*setup origines`",                     value: "Crée un panel réaction-rôle par pays (max 20 par panel)." },
+        { name: "`*setup origines edit <ID>`",           value: "Ajoute des origines à un panel existant." },
+        { name: "`*boostsetup #annonce #demandes`",      value: "Configure le système boost : annonce auto + demande de rôle perso via formulaire." },
       ),
   },
 
