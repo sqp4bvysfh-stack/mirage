@@ -29,9 +29,13 @@ export async function handleBoostMember(
   oldMember: GuildMember,
   newMember: GuildMember
 ): Promise<void> {
-  // Le membre vient de booster (premium_since absent avant, présent maintenant)
-  const vientDeBooster =
-    !oldMember.premiumSince && newMember.premiumSince;
+  // Résoudre le partial pour avoir l'état AVANT le boost
+  if (oldMember.partial) {
+    try { oldMember = await oldMember.fetch(); } catch { return; }
+  }
+
+  // Le membre vient de booster (premiumSince absent avant, présent maintenant)
+  const vientDeBooster = !oldMember.premiumSince && !!newMember.premiumSince;
 
   if (!vientDeBooster) return;
   if (!boostConfig.announceChannelId) return;
