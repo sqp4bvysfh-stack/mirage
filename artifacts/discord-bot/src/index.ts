@@ -250,9 +250,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
     if (hasLienInterdit) {
       await message.delete().catch(() => {});
       await message.channel.send(
-        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&${
-          message.guild?.roles.everyone.id ?? ""
-        }>\n> Les liens vers d'autres serveurs sont interdits ici.`
+        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&1476499085748862986>\n> Les liens vers d'autres serveurs sont interdits ici.`
       ).catch(() => {});
 
       // Warn automatique
