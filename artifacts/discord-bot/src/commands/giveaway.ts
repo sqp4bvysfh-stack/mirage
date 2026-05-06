@@ -61,7 +61,7 @@ export const giveawayCommand: Command = {
       .addFields(
         { name: "⏱️ Durée", value: formatDuration(duration), inline: true },
         { name: "🏁 Fin", value: `<t:${Math.floor(endTime / 1000)}:R>`, inline: true },
-        { name: "📋 Conditions", value: "✅ Être en vocal du début à la fin\n✅ Avoir `/mirg` dans son statut" },
+        { name: "📋 Conditions", value: "✅ Être en vocal du début à la fin\n✅ Avoir `/mrag` dans son statut" },
       )
       .setFooter({ text: "Organisé par " + message.author.tag })
       .setTimestamp();
@@ -90,8 +90,8 @@ export const giveawayCommand: Command = {
 
           const inVoice = !!member.voice.channel;
           const hasStatus = member.presence?.activities.some(a =>
-            a.state?.toLowerCase().includes("/mirg") ||
-            a.name?.toLowerCase().includes("/mirg")
+            a.state?.toLowerCase().includes("/mrag") ||
+            a.name?.toLowerCase().includes("/mrag")
           ) ?? false;
 
           if (inVoice && hasStatus) valides.push(user);

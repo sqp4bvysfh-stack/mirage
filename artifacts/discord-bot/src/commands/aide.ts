@@ -59,7 +59,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .setTitle("🛠️ Outils")
       .addFields(
         { name: "`*ticket setup`",                       value: "Initialise le panneau de tickets dans ce salon." },
-        { name: "`*giveaway <durée> <prix>`",            value: "Lance un giveaway avec conditions (vocal + statut `/mirg`).\nEx : `*giveaway 1h Nitro`  —  Durées : `30m`, `1h`, `2j`." },
+        { name: "`*giveaway <durée> <prix>`",            value: "Lance un giveaway avec conditions (vocal + statut `/mrag`).\nEx : `*giveaway 1h Nitro`  —  Durées : `30m`, `1h`, `2j`." },
         { name: "`*reroll <ID message>`",                value: "Relance le tirage d'un giveaway sans conditions." },
         { name: "`*poll \"question\" \"choix1\" ...`",   value: "Crée un sondage (min 2, max 10 choix)." },
         { name: "`*confess setup`",                      value: "Initialise le salon de confessions anonymes." },
