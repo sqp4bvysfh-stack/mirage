@@ -94,8 +94,9 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*ping`",          value: "Affiche la latence du bot." },
         { name: "`*info`",          value: "Infos du serveur." },
         { name: "`*aide`",          value: "Ce panneau d'aide." },
-        { name: "`*say [texte]`",   value: "Le bot envoie le message et supprime le tien (modo)." },
-        { name: "`*send + fichier`", value: "Envoie un fichier/image via le bot (modo)." },
+        { name: "`*say [texte]`",        value: "Le bot envoie le message et supprime le tien (modo)." },
+        { name: "`*send + fichier`",     value: "Envoie un fichier/image via le bot (modo)." },
+        { name: "`*talk [#salon]`",      value: "Envoie un message en tant que MIRAGE avec formatage préservé (retours à la ligne, espaces…) + image optionnelle. Guidé en 2 étapes." },
       ),
   },
 };
