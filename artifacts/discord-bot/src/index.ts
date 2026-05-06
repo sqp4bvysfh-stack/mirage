@@ -33,6 +33,7 @@ import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
 import { giveawayCommand, rerollCommand } from "./commands/giveaway.js";
 import { pollCommand } from "./commands/poll.js";
+import { boostSetupCommand, handleBoostMember, handleBoostInteraction } from "./commands/boost.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -78,6 +79,7 @@ for (const cmd of [
   pollCommand,
   ticketCommand,
   originesCommand,
+  boostSetupCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -158,8 +160,18 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await handleConfessionInteraction(interaction);
     await handleTicketInteraction(interaction);
     await handleAideInteraction(interaction);
+    await handleBoostInteraction(interaction);
   } catch (err) {
     console.error("Erreur interaction:", err);
+  }
+});
+
+// ─── BOOST — détection ───────────────────────────────────
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  try {
+    await handleBoostMember(oldMember as import("discord.js").GuildMember, newMember);
+  } catch (err) {
+    console.error("Erreur boost:", err);
   }
 });
 
