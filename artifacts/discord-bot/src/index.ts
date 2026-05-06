@@ -235,7 +235,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 
 // ─── MESSAGES ────────────────────────────────────────────
 // Codes d'invitation autorisés (sans le discord.gg/)
-const LIENS_AUTORISES = new Set(["mirg"]);
+const LIENS_AUTORISES = new Set(["mrag"]);
 const INVITE_REGEX = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
 
 client.on(Events.MessageCreate, async (message: Message) => {

@@ -47,7 +47,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon." },
         { name: "`*roleadd / *roleremove`",           value: "Ajouter / retirer un rôle à un membre." },
         { name: "🚨 Anti-raid",                       value: "Automatique — kick les comptes < 7 jours si 5 arrivées en 10s." },
-        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique. Seul `discord.gg/mirg` est autorisé." },
+        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique. Seul `discord.gg/mrag` est autorisé." },
       ),
   },
 
