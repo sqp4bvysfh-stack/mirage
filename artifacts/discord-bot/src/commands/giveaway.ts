@@ -124,6 +124,137 @@ export const giveawayCommand: Command = {
   },
 };
 
+// ─── TOP GIVEAWAY ─────────────────────────────────────────────────────────
+// Les boosters ont 3x plus de chances — uniquement dans cette commande.
+const BOOST_MULTIPLIER = 3;
+
+export const topGiveawayCommand: Command = {
+  name:        "topgiveaway",
+  description: "Giveaway Top X avec avantage booster",
+  usage:       "*topgiveaway <durée> <nb_gagnants> <prix>",
+
+  execute: async (message, args) => {
+    if (!message.member || !isModerator(message.member)) {
+      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
+      return;
+    }
+
+    const durStr   = args[0];
+    const nbStr    = args[1];
+    const prix     = args.slice(2).join(" ");
+
+    const duration = durStr ? parseDuration(durStr) : null;
+    if (!duration) {
+      await message.reply("❌ Durée invalide. Ex: `*topgiveaway 2j 10 Rôle exclusif`");
+      return;
+    }
+
+    const nb = parseInt(nbStr ?? "");
+    if (isNaN(nb) || nb < 1 || nb > 20) {
+      await message.reply("❌ Nombre de gagnants invalide (1–20). Ex: `*topgiveaway 2j 10 Nitro`");
+      return;
+    }
+
+    if (!prix) {
+      await message.reply("❌ Indique un prix. Ex: `*topgiveaway 2j 10 Nitro`");
+      return;
+    }
+
+    const endTime = Date.now() + duration;
+
+    const embed = new EmbedBuilder()
+      .setColor(0xff73fa)
+      .setTitle("🏆 TOP GIVEAWAY")
+      .setDescription(`**Prix :** ${prix}\n\nRéagis avec 🎉 pour participer !`)
+      .addFields(
+        { name: "⏱️ Durée",        value: formatDuration(duration),                 inline: true },
+        { name: "🏁 Fin",           value: `<t:${Math.floor(endTime / 1000)}:R>`,   inline: true },
+        { name: "🏆 Gagnants",      value: `Top **${nb}**`,                          inline: true },
+        { name: "💎 Avantage boost", value: `Les boosters ont **${BOOST_MULTIPLIER}x** plus de chances de gagner.\n*(le boost n'influence que ce type d'event)*` },
+      )
+      .setFooter({ text: "Organisé par " + message.author.tag })
+      .setTimestamp();
+
+    const giveawayMsg = await message.channel.send({ embeds: [embed] });
+    await giveawayMsg.react("🎉");
+    await message.delete().catch(() => {});
+
+    setTimeout(async () => {
+      try {
+        const fetched  = await message.channel.messages.fetch(giveawayMsg.id);
+        const reaction = fetched.reactions.cache.get("🎉");
+
+        if (!reaction) {
+          await message.channel.send("❌ Personne n'a participé.");
+          return;
+        }
+
+        const users  = await reaction.users.fetch();
+        const guild  = message.guild!;
+        const humains = [...users.values()].filter(u => !u.bot);
+
+        if (humains.length === 0) {
+          await message.channel.send("❌ Aucun participant.");
+          return;
+        }
+
+        // ── Construire le pool pondéré ──────────────────────────────────
+        // Booster = 3 tickets, membre normal = 1 ticket
+        const pool: { userId: string; booster: boolean }[] = [];
+
+        for (const user of humains) {
+          const member  = await guild.members.fetch(user.id).catch(() => null);
+          const isBoost = !!member?.premiumSince;
+          const tickets = isBoost ? BOOST_MULTIPLIER : 1;
+          for (let i = 0; i < tickets; i++) {
+            pool.push({ userId: user.id, booster: isBoost });
+          }
+        }
+
+        // ── Fisher-Yates shuffle ───────────────────────────────────────
+        for (let i = pool.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [pool[i], pool[j]] = [pool[j], pool[i]];
+        }
+
+        // ── Sélectionner N gagnants uniques ────────────────────────────
+        const gagnants: { userId: string; booster: boolean }[] = [];
+        const seen = new Set<string>();
+        for (const entry of pool) {
+          if (seen.has(entry.userId)) continue;
+          seen.add(entry.userId);
+          gagnants.push(entry);
+          if (gagnants.length >= nb) break;
+        }
+
+        const liste = gagnants.map((g, i) =>
+          `**${i + 1}.** <@${g.userId}>${g.booster ? " 💎" : ""}`
+        ).join("\n");
+
+        const endEmbed = new EmbedBuilder()
+          .setColor(0xff73fa)
+          .setTitle("🏆 TOP GIVEAWAY — RÉSULTATS")
+          .setDescription(`**Prix :** ${prix}`)
+          .addFields(
+            { name: `🏆 Top ${gagnants.length} gagnants`, value: liste },
+            { name: "💎", value: "= booster (avantage 3x tickets)" },
+          )
+          .setTimestamp();
+
+        await fetched.edit({ embeds: [endEmbed] });
+        const mentions = gagnants.map(g => `<@${g.userId}>`).join(" ");
+        await message.channel.send({
+          content: `🎊 ${mentions}\nFélicitations ! Vous faites partie du **Top ${gagnants.length}** et gagnez **${prix}** !`,
+          embeds:  [endEmbed],
+        });
+
+      } catch (err) {
+        console.error("Erreur topgiveaway:", err);
+      }
+    }, duration);
+  },
+};
+
 export const rerollCommand: Command = {
   name: "reroll",
   description: "Relancer le tirage d'un giveaway sans conditions",
