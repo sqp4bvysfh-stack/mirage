@@ -45,6 +45,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*warn @membre [raison]`",           value: "Avertissement. `*warn list @membre` pour l'historique." },
         { name: "`*clear [nombre]`",                  value: "Supprime des messages (max 100)." },
         { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon." },
+        { name: "`*fermeture [#salon-temp]`",         value: "Ferme le serveur — masque tous les salons à @MEMBRES sauf le salon temporaire mentionné." },
+        { name: "`*ouverture`",                       value: "Rouvre le serveur — redonne l'accès à @MEMBRES sur tous les salons." },
         { name: "`*roleadd / *roleremove`",           value: "Ajouter / retirer un rôle à un membre." },
         { name: "🚨 Anti-raid",                       value: "Automatique — kick les comptes < 7 jours si 5 arrivées en 10s." },
         { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique. Seul `discord.gg/mrag` est autorisé." },

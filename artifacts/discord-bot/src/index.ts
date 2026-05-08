@@ -35,6 +35,7 @@ import { giveawayCommand, rerollCommand } from "./commands/giveaway.js";
 import { pollCommand } from "./commands/poll.js";
 import { boostSetupCommand, handleBoostMember, handleBoostInteraction } from "./commands/boost.js";
 import { talkCommand } from "./commands/talk.js";
+import { fermetureCommand, ouvertureCommand } from "./commands/fermeture.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -82,6 +83,8 @@ for (const cmd of [
   originesCommand,
   boostSetupCommand,
   talkCommand,
+  fermetureCommand,
+  ouvertureCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
