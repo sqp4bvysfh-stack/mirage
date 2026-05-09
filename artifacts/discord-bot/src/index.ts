@@ -265,7 +265,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
   }
 
   // ── IA mention ────────────────────────────────────────────────────────────
-  if (client.user && message.mentions.has(client.user)) {
+  if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) {
     const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
     if (texte) {
       const isMod =
