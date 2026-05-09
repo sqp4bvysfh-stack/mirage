@@ -34,7 +34,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     embed: new EmbedBuilder()
       .setColor(0xe74c3c)
       .setTitle("🛡️ Modération")
-      .setDescription("Réservées aux modérateurs. ⚠️ La hiérarchie est respectée — tu ne peux pas sanctionner quelqu'un au-dessus de toi.")
+      .setDescription("Réservées aux modérateurs. ⚠️ La hiérarchie est respectée sur **tous les serveurs** — tu ne peux pas sanctionner quelqu'un au-dessus de toi.")
       .addFields(
         { name: "`*ban @membre [raison]`",            value: "Bannit définitivement." },
         { name: "`*unban [ID]`",                      value: "Débannit par ID." },
@@ -49,7 +49,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*ouverture`",                       value: "Rouvre le serveur — redonne l'accès à @MEMBRES sur tous les salons." },
         { name: "`*roleadd / *roleremove`",           value: "Ajouter / retirer un rôle à un membre." },
         { name: "🚨 Anti-raid",                       value: "Automatique — kick les comptes < 7 jours si 5 arrivées en 10s." },
-        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique. Seul `discord.gg/mrag` est autorisé." },
+        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique." },
+        { name: "📊 Hiérarchie",                      value: "👑 Owner > 🎯 Staff > ⚙️ Admin > ⚠️ Abus > 🛡️ Modo\nConfigurable par serveur via `*config set`." },
       ),
   },
 
@@ -61,11 +62,11 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .setTitle("🛠️ Outils")
       .addFields(
         { name: "`*ticket setup`",                       value: "Initialise le panneau de tickets dans ce salon." },
-        { name: "`*giveaway <durée> <prix>`",            value: "Lance un giveaway avec conditions (vocal + statut `/mrag`).\nEx : `*giveaway 1h Nitro`  —  Durées : `30m`, `1h`, `2j`." },
+        { name: "`*giveaway <durée> <prix>`",            value: "Lance un giveaway avec conditions (vocal + statut).\nEx : `*giveaway 1h Nitro`  —  Durées : `30m`, `1h`, `2j`." },
         { name: "`*reroll <ID message>`",                value: "Relance le tirage d'un giveaway sans conditions." },
         { name: "`*topgiveaway <durée> <nb> <prix>`",   value: "Giveaway Top X — les boosters ont **3x** plus de chances. Ex : `*topgiveaway 2j 10 Nitro`" },
         { name: "`*poll \"question\" \"choix1\" ...`",   value: "Crée un sondage (min 2, max 10 choix)." },
-        { name: "`*confess setup`",                      value: "Initialise le salon de confessions anonymes." },
+        { name: "`*confess setup #conf #logs`",          value: "Initialise le salon de confessions anonymes." },
         { name: "`*setup origines`",                     value: "Crée un panel réaction-rôle par pays (max 20 par panel)." },
         { name: "`*setup origines edit <ID>`",           value: "Ajoute des origines à un panel existant." },
         { name: "`*boostsetup #annonce #demandes`",      value: "Configure le système boost : annonce auto + demande de rôle perso via formulaire." },
@@ -77,11 +78,11 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     label: "IA",
     embed: new EmbedBuilder()
       .setColor(0x9b59b6)
-      .setTitle("🤖 IA — Mirage")
-      .setDescription("Parle avec **Mirage**, une IA qui répond comme une vraie personne du serveur.")
+      .setTitle("🤖 IA")
+      .setDescription("Parle avec l'IA du serveur — elle répond comme une vraie personne.\nSon nom se configure via `*config set botName <nom>`.")
       .addFields(
-        { name: "`*ia [message]`",            value: "Pose une question à Mirage." },
-        { name: "`@MIRAGE [message]`",        value: "Mentionne le bot directement dans n'importe quel salon." },
+        { name: "`*ia [message]`",            value: "Pose une question à l'IA." },
+        { name: "`@bot [message]`",           value: "Mentionne le bot directement dans n'importe quel salon." },
         { name: "🎭 Personnalité",            value: "Directe, naturelle, 1-2 phrases max comme dans un vrai Discord." },
         { name: "🛡️ Modos",                  value: "Les modérateurs peuvent lui demander des actions de modération." },
       ),
@@ -94,13 +95,76 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .setColor(0x5865f2)
       .setTitle("ℹ️ Utilitaires")
       .addFields(
-        { name: "`*ping`",          value: "Affiche la latence du bot." },
-        { name: "`*info`",          value: "Infos du serveur." },
-        { name: "`*aide`",          value: "Ce panneau d'aide." },
-        { name: "`*say [texte]`",        value: "Le bot envoie le message et supprime le tien (modo)." },
-        { name: "`*send + fichier`",     value: "Envoie un fichier/image via le bot (modo)." },
-        { name: "`*talk [#salon]`",      value: "Envoie un message en tant que MIRAGE avec formatage préservé (retours à la ligne, espaces…) + image optionnelle. Guidé en 2 étapes." },
+        { name: "`*ping`",           value: "Affiche la latence du bot." },
+        { name: "`*info`",           value: "Infos du serveur." },
+        { name: "`*aide`",           value: "Ce panneau d'aide." },
+        { name: "`*say [texte]`",    value: "Le bot envoie le message et supprime le tien (modo)." },
+        { name: "`*send + fichier`", value: "Envoie un fichier/image via le bot (modo)." },
+        { name: "`*talk [#salon]`",  value: "Envoie un message en tant que le bot avec formatage préservé + image optionnelle. Guidé en 2 étapes." },
       ),
+  },
+
+  config: {
+    emoji: "⚙️",
+    label: "Config bot",
+    embed: new EmbedBuilder()
+      .setColor(0x95a5a6)
+      .setTitle("⚙️ Configuration du bot")
+      .setDescription(
+        "Toute la configuration est **par serveur** et s'applique immédiatement.\n" +
+        "Commandes réservées aux modérateurs.\n\n" +
+        "`*config list` — voir la config actuelle\n" +
+        "`*config set <clé> <valeur>` — modifier une valeur\n\n" +
+        "La valeur peut être une **mention** (`@rôle`, `#salon`) ou un **ID brut**."
+      )
+      .addFields(
+        {
+          name: "🛡️ Rôles de modération",
+          value:
+            "`modoRole` — Rôle modérateur\n" +
+            "`abuseRole` — Rôle gestion abus\n" +
+            "`staffRole` — Rôle staff\n" +
+            "`ownerUser` — ID de l'owner (pour tickets)\n" +
+            "`membresRole` — Rôle membres (lock / fermeture)",
+        },
+        {
+          name: "📢 Salons automatiques",
+          value:
+            "`welcomeChannel` — Salon de bienvenue\n" +
+            "`giveawayChannel` — Salon giveaway\n" +
+            "`boostChannel` — Salon annonce boost\n" +
+            "`demandeChannel` — Salon demandes rôle perso",
+        },
+        {
+          name: "🕵️ Confessions",
+          value:
+            "`confessionChannel` — Salon où les confessions apparaissent\n" +
+            "`confessionLog` — Salon logs des confessions (modo uniquement)",
+        },
+        {
+          name: "🐺 Loup-Garou",
+          value:
+            "`lgRole` — Rôle décoratif Loup-Garou\n" +
+            "`lgSalon` — Salon Loup-Garou",
+        },
+        {
+          name: "🤖 IA & Divers",
+          value:
+            "`botName` — Nom de l'IA (affiché dans ses réponses)\n" +
+            "`antiPubRole` — Rôle à mentionner dans les avertissements anti-pub",
+        },
+        {
+          name: "📖 Exemple complet",
+          value:
+            "```\n" +
+            "*config set modoRole @Modérateur\n" +
+            "*config set welcomeChannel #bienvenue\n" +
+            "*config set botName Aria\n" +
+            "*config list\n" +
+            "```",
+        },
+      )
+      .setFooter({ text: "Si une valeur n'est pas configurée, le bot utilise les valeurs par défaut (serveur MIRAGE)." }),
   },
 };
 
@@ -109,26 +173,31 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
 function makePanelEmbed() {
   return new EmbedBuilder()
     .setColor(0x5865f2)
-    .setTitle("📖 Aide — MIRAGE")
+    .setTitle("📖 Aide — Bot")
     .setDescription("Clique sur une catégorie pour voir les commandes correspondantes.")
     .addFields(
       { name: "🎮 Jeux",        value: "Loup-Garou, Undercover, Quiz…",          inline: true },
       { name: "🛡️ Modération",  value: "Ban, kick, mute, warn…",                  inline: true },
       { name: "🛠️ Outils",      value: "Tickets, giveaway, poll, confess…",       inline: true },
-      { name: "🤖 IA",          value: "Parler avec Mirage.",                      inline: true },
+      { name: "🤖 IA",          value: "Parler avec l'IA du serveur.",             inline: true },
       { name: "ℹ️ Utilitaires", value: "Ping, info, say…",                         inline: true },
+      { name: "⚙️ Config bot",  value: "Configurer le bot pour ce serveur.",       inline: true },
     )
-    .setFooter({ text: "MIRAGE — Serveur FR" });
+    .setFooter({ text: "Préfixe : *  —  Multi-serveur compatible" });
 }
 
-function makePanelRow() {
-  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+function makePanelRows() {
+  const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("aide_cat_jeux").setLabel("🎮 Jeux").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("aide_cat_moderation").setLabel("🛡️ Modération").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("aide_cat_outils").setLabel("🛠️ Outils").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("aide_cat_ia").setLabel("🤖 IA").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("aide_cat_utilitaires").setLabel("ℹ️ Utilitaires").setStyle(ButtonStyle.Secondary),
   );
+  const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("aide_cat_config").setLabel("⚙️ Config bot").setStyle(ButtonStyle.Secondary),
+  );
+  return [row1, row2];
 }
 
 // ─── Handler d'interaction ─────────────────────────────────────────────────
@@ -154,7 +223,7 @@ export const aideCommand: Command = {
   execute: async (message) => {
     await message.reply({
       embeds:     [makePanelEmbed()],
-      components: [makePanelRow()],
+      components: makePanelRows(),
     });
   },
 };
