@@ -21,6 +21,11 @@ export const massbanCommand: Command = {
     }
     if (!message.guild) return;
 
+    if (!message.guild.members.me?.permissions.has(PermissionFlagsBits.BanMembers)) {
+      await message.reply("❌ Le bot n'a pas la permission **Bannir des membres** sur ce serveur.");
+      return;
+    }
+
     const role = message.mentions.roles.first();
     const raison = args.filter(a => !a.startsWith("<")).join(" ") || "Mass ban — owner";
 
@@ -77,6 +82,11 @@ export const masskickCommand: Command = {
       return;
     }
     if (!message.guild) return;
+
+    if (!message.guild.members.me?.permissions.has(PermissionFlagsBits.KickMembers)) {
+      await message.reply("❌ Le bot n'a pas la permission **Expulser des membres** sur ce serveur.");
+      return;
+    }
 
     const role = message.mentions.roles.first();
     const raison = args.filter(a => !a.startsWith("<")).join(" ") || "Mass kick — owner";
