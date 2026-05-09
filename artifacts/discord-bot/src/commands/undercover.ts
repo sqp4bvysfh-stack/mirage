@@ -186,7 +186,7 @@ export const undercoverCommand: Command = {
 
     collector.on("collect", async (reaction, user) => {
       if (reaction.emoji.name === "✅") {
-        if (players.size >= 12) {
+        if (players.size >= 30) {
           await reaction.users.remove(user.id).catch(() => {});
           return;
         }
