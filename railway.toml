@@ -6,3 +6,4 @@ buildCommand = "pnpm install --no-frozen-lockfile --ignore-scripts --filter @wor
 [deploy]
 startCommand = "pnpm --filter @workspace/discord-bot run start"
 restartPolicyType = "always"
+# trigger
