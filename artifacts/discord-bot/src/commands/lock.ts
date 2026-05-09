@@ -1,8 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
-
-const MEMBRES_ROLE_ID = "1476411015586517269";
+import { getConfig } from "../utils/serverConfig.js";
 
 async function toggleLock(message: any, unlock: boolean) {
   const channel = message.channel;
@@ -11,15 +10,14 @@ async function toggleLock(message: any, unlock: boolean) {
     return;
   }
 
-  const membresRole = message.guild?.roles.cache.get(MEMBRES_ROLE_ID);
+  const membresRoleId = getConfig(message.guild?.id ?? "").membresRole ?? "1476411015586517269";
+  const membresRole   = message.guild?.roles.cache.get(membresRoleId);
   if (!membresRole) {
-    await message.reply("❌ Rôle MEMBRES introuvable.");
+    await message.reply("❌ Rôle membres introuvable. Configure avec `*config set membresRole <id>`.");
     return;
   }
 
-  await channel.permissionOverwrites.edit(membresRole, {
-    SendMessages: unlock ? null : false,
-  });
+  await channel.permissionOverwrites.edit(membresRole, { SendMessages: unlock ? null : false });
 
   const embed = new EmbedBuilder()
     .setColor(unlock ? 0x2ecc71 : 0xe74c3c)
@@ -32,26 +30,20 @@ async function toggleLock(message: any, unlock: boolean) {
 }
 
 export const lockCommand: Command = {
-  name: "lock",
-  description: "Verrouiller un salon",
-  usage: "*lock",
+  name: "lock", description: "Verrouiller un salon", usage: "*lock",
   execute: async (message) => {
     if (!message.member || !isModerator(message.member)) {
-      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
-      return;
+      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande."); return;
     }
     await toggleLock(message, false);
   },
 };
 
 export const unlockCommand: Command = {
-  name: "unlock",
-  description: "Déverrouiller un salon",
-  usage: "*unlock",
+  name: "unlock", description: "Déverrouiller un salon", usage: "*unlock",
   execute: async (message) => {
     if (!message.member || !isModerator(message.member)) {
-      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
-      return;
+      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande."); return;
     }
     await toggleLock(message, true);
   },

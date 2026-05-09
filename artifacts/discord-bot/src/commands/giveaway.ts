@@ -2,7 +2,8 @@ import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
-const GIVEAWAY_CHANNEL_ID = "1500134760314572810";
+import { getConfig } from "../utils/serverConfig.js";
+const DEFAULT_GIVEAWAY_CHANNEL = "1500134760314572810";
 
 function parseDuration(str: string): number | null {
   const match = str.match(/^(\d+)(s|m|h|j)$/);
@@ -34,8 +35,9 @@ export const giveawayCommand: Command = {
       return;
     }
 
-    if (message.channel.id !== GIVEAWAY_CHANNEL_ID) {
-      await message.reply(`❌ Utilise cette commande dans <#${GIVEAWAY_CHANNEL_ID}>.`);
+    const giveawayChannelId = getConfig(message.guild?.id ?? "").giveawayChannel ?? DEFAULT_GIVEAWAY_CHANNEL;
+    if (message.channel.id !== giveawayChannelId) {
+      await message.reply(`❌ Utilise cette commande dans <#${giveawayChannelId}>.`);
       return;
     }
 

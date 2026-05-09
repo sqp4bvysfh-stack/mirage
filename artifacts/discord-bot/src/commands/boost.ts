@@ -14,33 +14,24 @@ import {
 } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
-
-// ─── Config en mémoire ────────────────────────────────────────────────────
-export const boostConfig: {
-  announceChannelId: string | null;
-  demandeChannelId:  string | null;
-} = {
-  announceChannelId: null,
-  demandeChannelId:  null,
-};
+import { getConfig, setConfig } from "../utils/serverConfig.js";
 
 // ─── Détection du boost ───────────────────────────────────────────────────
 export async function handleBoostMember(
   oldMember: GuildMember,
   newMember: GuildMember
 ): Promise<void> {
-  // Résoudre le partial pour avoir l'état AVANT le boost
   if (oldMember.partial) {
     try { oldMember = await oldMember.fetch(); } catch { return; }
   }
 
-  // Le membre vient de booster (premiumSince absent avant, présent maintenant)
   const vientDeBooster = !oldMember.premiumSince && !!newMember.premiumSince;
-
   if (!vientDeBooster) return;
-  if (!boostConfig.announceChannelId) return;
 
-  const channel = newMember.guild.channels.cache.get(boostConfig.announceChannelId) as TextChannel | undefined;
+  const announceChannelId = getConfig(newMember.guild.id).boostChannel;
+  if (!announceChannelId) return;
+
+  const channel = newMember.guild.channels.cache.get(announceChannelId) as TextChannel | undefined;
   if (!channel || channel.type !== ChannelType.GuildText) return;
 
   const embed = new EmbedBuilder()
@@ -72,47 +63,26 @@ export async function handleBoostInteraction(interaction: Interaction): Promise<
   if (interaction.isButton() && interaction.customId.startsWith("role_perso_demande:")) {
     const targetId = interaction.customId.split(":")[1];
 
-    // Seul le booster concerné peut cliquer
     if (interaction.user.id !== targetId) {
-      await interaction.reply({
-        content: "❌ Ce bouton est réservé à la personne qui a boosted.",
-        flags: 64,
-      });
+      await interaction.reply({ content: "❌ Ce bouton est réservé à la personne qui a boosted.", flags: 64 });
       return;
     }
 
-    const modal = new ModalBuilder()
-      .setCustomId(`role_perso_modal:${targetId}`)
-      .setTitle("🎨 Rôle personnalisé");
-
-    const nomInput = new TextInputBuilder()
-      .setCustomId("rp_nom")
-      .setLabel("Nom du rôle")
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder("Ex : ★ MonPseudo")
-      .setMaxLength(100)
-      .setRequired(true);
-
-    const couleurInput = new TextInputBuilder()
-      .setCustomId("rp_couleur")
-      .setLabel("Couleur (code hex)")
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder("Ex : #FF73FA")
-      .setMaxLength(7)
-      .setRequired(true);
-
-    const emojiInput = new TextInputBuilder()
-      .setCustomId("rp_emoji")
-      .setLabel("Emoji du rôle (facultatif)")
-      .setStyle(TextInputStyle.Short)
-      .setPlaceholder("Ex : 🌸")
-      .setMaxLength(10)
-      .setRequired(false);
+    const modal = new ModalBuilder().setCustomId(`role_perso_modal:${targetId}`).setTitle("🎨 Rôle personnalisé");
 
     modal.addComponents(
-      new ActionRowBuilder<TextInputBuilder>().addComponents(nomInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(couleurInput),
-      new ActionRowBuilder<TextInputBuilder>().addComponents(emojiInput),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("rp_nom").setLabel("Nom du rôle").setStyle(TextInputStyle.Short)
+          .setPlaceholder("Ex : ★ MonPseudo").setMaxLength(100).setRequired(true)
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("rp_couleur").setLabel("Couleur (code hex)").setStyle(TextInputStyle.Short)
+          .setPlaceholder("Ex : #FF73FA").setMaxLength(7).setRequired(true)
+      ),
+      new ActionRowBuilder<TextInputBuilder>().addComponents(
+        new TextInputBuilder().setCustomId("rp_emoji").setLabel("Emoji du rôle (facultatif)").setStyle(TextInputStyle.Short)
+          .setPlaceholder("Ex : 🌸").setMaxLength(10).setRequired(false)
+      ),
     );
 
     await interaction.showModal(modal);
@@ -122,40 +92,32 @@ export async function handleBoostInteraction(interaction: Interaction): Promise<
   // ── Modal soumis → envoyer le récap ────────────────────────────────────
   if (interaction.isModalSubmit() && interaction.customId.startsWith("role_perso_modal:")) {
     const targetId = interaction.customId.split(":")[1];
+    const nom      = interaction.fields.getTextInputValue("rp_nom").trim();
+    const couleur  = interaction.fields.getTextInputValue("rp_couleur").trim();
+    const emoji    = interaction.fields.getTextInputValue("rp_emoji").trim();
 
-    const nom     = interaction.fields.getTextInputValue("rp_nom").trim();
-    const couleur = interaction.fields.getTextInputValue("rp_couleur").trim();
-    const emoji   = interaction.fields.getTextInputValue("rp_emoji").trim();
-
-    // Validation couleur hex
     if (!/^#[0-9A-Fa-f]{6}$/.test(couleur)) {
-      await interaction.reply({
-        content: "❌ Couleur invalide. Utilise un code hex valide, ex : `#FF73FA`",
-        flags: 64,
-      });
+      await interaction.reply({ content: "❌ Couleur invalide. Utilise un code hex valide, ex : `#FF73FA`", flags: 64 });
       return;
     }
 
-    await interaction.reply({
-      content: "✅ Ta demande a bien été envoyée ! L'équipe va créer ton rôle dès que possible.",
-      flags: 64,
-    });
+    await interaction.reply({ content: "✅ Ta demande a bien été envoyée ! L'équipe va créer ton rôle dès que possible.", flags: 64 });
 
-    if (!boostConfig.demandeChannelId) return;
+    const demandeChannelId = getConfig(interaction.guild?.id ?? "").demandeChannel;
+    if (!demandeChannelId) return;
 
-    const demandeChannel = interaction.guild?.channels.cache.get(boostConfig.demandeChannelId) as TextChannel | undefined;
+    const demandeChannel = interaction.guild?.channels.cache.get(demandeChannelId) as TextChannel | undefined;
     if (!demandeChannel) return;
 
     const colorInt = parseInt(couleur.replace("#", ""), 16);
-
     const recap = new EmbedBuilder()
       .setColor(colorInt)
       .setTitle("📋 Nouvelle demande de rôle perso")
       .addFields(
-        { name: "Membre",   value: `<@${targetId}>`, inline: true },
-        { name: "Nom",      value: `\`${nom}\``,     inline: true },
-        { name: "Couleur",  value: `\`${couleur}\``, inline: true },
-        { name: "Emoji",    value: emoji || "*aucun*", inline: true },
+        { name: "Membre",  value: `<@${targetId}>`, inline: true },
+        { name: "Nom",     value: `\`${nom}\``,     inline: true },
+        { name: "Couleur", value: `\`${couleur}\``, inline: true },
+        { name: "Emoji",   value: emoji || "*aucun*", inline: true },
       )
       .setFooter({ text: `ID : ${targetId}` })
       .setTimestamp();
@@ -171,30 +133,25 @@ export const boostSetupCommand: Command = {
   description: "Configure les salons du système de boost",
   usage:       "*boostsetup #salon-boost #salon-demandes",
 
-  execute: async (message: Message, args) => {
+  execute: async (message: Message) => {
     if (!message.member || !isModerator(message.member)) {
-      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
-      return;
+      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande."); return;
     }
 
     const annonce  = message.mentions.channels.at(0);
     const demandes = message.mentions.channels.at(1);
 
     if (!annonce || !demandes) {
-      await message.reply(
-        "❌ Utilise : `*boostsetup #salon-boost #salon-demandes`\n" +
-        "Ex : `*boostsetup #annonces #demandes-rôle-perso`"
-      );
+      await message.reply("❌ Utilise : `*boostsetup #salon-boost #salon-demandes`\nEx : `*boostsetup #annonces #demandes-rôle-perso`");
       return;
     }
 
-    boostConfig.announceChannelId = annonce.id;
-    boostConfig.demandeChannelId  = demandes.id;
+    const guildId = message.guild!.id;
+    setConfig(guildId, "boostChannel",   annonce.id);
+    setConfig(guildId, "demandeChannel", demandes.id);
 
     await message.reply(
-      `✅ Système de boost configuré !\n` +
-      `📢 Annonces boost → ${annonce}\n` +
-      `📋 Demandes rôle perso → ${demandes}`
+      `✅ Système de boost configuré !\n📢 Annonces boost → ${annonce}\n📋 Demandes rôle perso → ${demandes}`
     );
   },
 };

@@ -1,16 +1,17 @@
 import Groq from "groq-sdk";
 import type { Command } from "../types.js";
+import { getConfig } from "../utils/serverConfig.js";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
-// 🔥 PROMPT AMÉLIORÉ
-const SYSTEM_PROMPT = `Tu t'appelles Mirage, 20 ans, sur Discord.
+function buildSystemPrompt(botName: string): string {
+  return `Tu t'appelles ${botName}, 20 ans, sur Discord.
 
 OBJECTIF :
 Répondre de façon simple, naturelle et pertinente.
 
 RÈGLE PRINCIPALE :
-Tu comprends le message et tu réponds exactement à ce qui est demandé. 
+Tu comprends le message et tu réponds exactement à ce qui est demandé.
 Tu ne pars jamais hors sujet.
 
 STYLE :
@@ -23,19 +24,19 @@ STYLE :
 IMPORTANT :
 - Orthographe correcte (pas de fautes abusées)
 - Tu restes lisible
-- Tu ne fais pas exprès d’écrire mal
+- Tu ne fais pas exprès d'écrire mal
 - Pas de phrases étranges ou incohérentes
 
 COMPORTEMENT :
 - Question simple → réponse courte
 - Message vague → réponse simple
-- Si tu comprends pas → "jsp j’ai pas capté"
-- Si quelqu’un est agressif → tu peux répondre un peu froidement
-- Tu t’adaptes au ton de la personne
+- Si tu comprends pas → "jsp j'ai pas capté"
+- Si quelqu'un est agressif → tu peux répondre un peu froidement
+- Tu t'adaptes au ton de la personne
 
 LIMITES :
 - 1 à 3 phrases max (4 si vraiment nécessaire)
-- Pas d’explication longue si pas demandé
+- Pas d'explication longue si pas demandé
 - Pas de blabla inutile
 
 INTERDIT :
@@ -47,43 +48,43 @@ INTERDIT :
 - Dire que tu es une IA
 
 BUT FINAL :
-Donner l’impression d’une vraie personne qui répond normalement sur Discord.`;
+Donner l'impression d'une vraie personne qui répond normalement sur Discord.`;
+}
 
 const MOD_KEYWORDS = ["@everyone", "@here", "ban", "mute", "kick", "expulse", "bannir", "tempban"];
 
-type Message = { role: "user" | "assistant"; content: string };
-const memoire = new Map<string, Message[]>();
+type HistoryMessage = { role: "user" | "assistant"; content: string };
+const memoire = new Map<string, HistoryMessage[]>();
 const MAX_MESSAGES = 15;
 
-export async function repondreIA(contenu: string, isMod: boolean, channelId: string): Promise<string> {
-  const historique = memoire.get(channelId) ?? [];
+export async function repondreIA(
+  contenu:  string,
+  isMod:    boolean,
+  channelId: string,
+  guildId?:  string,
+): Promise<string> {
+  const historique   = memoire.get(channelId) ?? [];
+  const botName      = (guildId ? getConfig(guildId).botName : null) ?? "le bot";
+  const systemPrompt = isMod
+    ? buildSystemPrompt(botName) + " Cet utilisateur est modérateur."
+    : buildSystemPrompt(botName);
 
   historique.push({ role: "user", content: contenu });
 
-  const systemPrompt = isMod
-    ? SYSTEM_PROMPT + " Cet utilisateur est modérateur."
-    : SYSTEM_PROMPT;
-
   try {
     const response = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
-      messages: [
-        { role: "system", content: systemPrompt },
-        ...historique,
-      ],
+      model:    "llama-3.1-8b-instant",
+      messages: [{ role: "system", content: systemPrompt }, ...historique],
       max_tokens: 120,
     });
 
     const reply = response.choices[0]?.message?.content ?? "jsp j'ai pas capté";
-
     historique.push({ role: "assistant", content: reply });
 
     if (historique.length > MAX_MESSAGES) {
       historique.splice(0, historique.length - MAX_MESSAGES);
     }
-
     memoire.set(channelId, historique);
-
     return reply;
   } catch (err) {
     console.error("Erreur IA:", err);
@@ -92,28 +93,22 @@ export async function repondreIA(contenu: string, isMod: boolean, channelId: str
 }
 
 export const iaCommand: Command = {
-  name: "ia",
-  description: "Parle avec Mirage",
-  usage: "*ia [message]",
+  name:        "ia",
+  description: "Parle avec le bot IA",
+  usage:       "*ia [message]",
   execute: async (message, args) => {
     const texte = args.join(" ");
-    if (!texte) {
-      await message.reply("dis ce que tu veux");
-      return;
-    }
+    if (!texte) { await message.reply("dis ce que tu veux"); return; }
 
     const isMod =
       message.member?.permissions.has("ManageMessages") ||
       message.member?.permissions.has("Administrator");
 
-    const demandeMod = MOD_KEYWORDS.some((k) => texte.toLowerCase().includes(k));
-    if (demandeMod && !isMod) {
-      await message.reply("❌ t'as pas les perms");
-      return;
-    }
+    const demandeMod = MOD_KEYWORDS.some(k => texte.toLowerCase().includes(k));
+    if (demandeMod && !isMod) { await message.reply("❌ t'as pas les perms"); return; }
 
     await message.channel.sendTyping();
-    const reply = await repondreIA(texte, isMod ?? false, message.channelId);
+    const reply = await repondreIA(texte, isMod ?? false, message.channelId, message.guildId ?? undefined);
     await message.reply(reply);
   },
 };

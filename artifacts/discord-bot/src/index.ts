@@ -2,6 +2,7 @@ import { createServer } from "node:http";
 import { Client, GatewayIntentBits, Partials, Collection, Events } from "discord.js";
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
+import { getConfig } from "./utils/serverConfig.js";
 
 // ─── COMMANDS ─────────────────────────────────────────────
 import { pingCommand } from "./commands/ping.js";
@@ -36,6 +37,7 @@ import { pollCommand } from "./commands/poll.js";
 import { boostSetupCommand, handleBoostMember, handleBoostInteraction } from "./commands/boost.js";
 import { talkCommand } from "./commands/talk.js";
 import { fermetureCommand, ouvertureCommand } from "./commands/fermeture.js";
+import { configCommand } from "./commands/config.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -86,6 +88,7 @@ for (const cmd of [
   talkCommand,
   fermetureCommand,
   ouvertureCommand,
+  configCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -114,34 +117,29 @@ const client = new Client({
 const RAID_THRESHOLD = 5;
 const RAID_WINDOW_MS = 10_000;
 const joinTracker = new Map<string, { time: number; memberId: string }[]>();
-const raidMode    = new Set<string>(); // guilds en mode raid actif
+const raidMode    = new Set<string>();
 
 client.on(Events.GuildMemberAdd, async (member) => {
   const guildId = member.guild.id;
   const now     = Date.now();
 
-  const recent = (joinTracker.get(guildId) ?? [])
-    .filter(e => now - e.time < RAID_WINDOW_MS);
+  const recent = (joinTracker.get(guildId) ?? []).filter(e => now - e.time < RAID_WINDOW_MS);
   recent.push({ time: now, memberId: member.id });
   joinTracker.set(guildId, recent);
 
   if (recent.length >= RAID_THRESHOLD) {
-    // Kick tous les comptes récents (< 7 jours)
     for (const { memberId } of recent) {
       const m = await member.guild.members.fetch(memberId).catch(() => null);
       if (!m) continue;
       const ageDays = (now - m.user.createdTimestamp) / 86_400_000;
-      if (ageDays < 7) {
-        await m.kick("Anti-raid : compte récent").catch(() => {});
-      }
+      if (ageDays < 7) await m.kick("Anti-raid : compte récent").catch(() => {});
     }
 
     if (!raidMode.has(guildId)) {
       raidMode.add(guildId);
       setTimeout(() => raidMode.delete(guildId), 30_000);
 
-      const alert = member.guild.systemChannel
-        ?? member.guild.channels.cache.find(c => c.isTextBased());
+      const alert = member.guild.systemChannel ?? member.guild.channels.cache.find(c => c.isTextBased());
       if (alert?.isTextBased()) {
         alert.send(
           `🚨 **ALERTE RAID DÉTECTÉE** — ${recent.length} arrivées en ${RAID_WINDOW_MS / 1000}s.\n` +
@@ -149,17 +147,17 @@ client.on(Events.GuildMemberAdd, async (member) => {
         ).catch(() => {});
       }
     }
-
     joinTracker.set(guildId, []);
   }
 });
 
 // ─── WELCOME ─────────────────────────────────────────────
+const DEFAULT_WELCOME_CHANNEL = "1476532494768672850";
+
 client.on(Events.GuildMemberAdd, async (member) => {
-  const salon = member.guild.channels.cache.get("1476532494768672850");
-  if (salon && salon.isTextBased()) {
-    salon.send(`👋 Bienvenue ${member}`).catch(() => {});
-  }
+  const welcomeChannelId = getConfig(member.guild.id).welcomeChannel ?? DEFAULT_WELCOME_CHANNEL;
+  const salon = member.guild.channels.cache.get(welcomeChannelId);
+  if (salon?.isTextBased()) salon.send(`👋 Bienvenue ${member}`).catch(() => {});
 });
 
 // ─── HTTP SERVER (Railway health check) ──────────────────
@@ -168,11 +166,10 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 createServer((req, res) => {
   const status = {
     status: client.isReady() ? "online" : "starting",
-    bot: client.user?.tag ?? null,
+    bot:    client.user?.tag ?? null,
     guilds: client.guilds.cache.size,
     uptime: client.uptime ?? 0,
   };
-
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify(status));
 }).listen(PORT, () => {
@@ -210,14 +207,11 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
-
-  const cfg = config.find(o => o.emoji === reaction.emoji.name);
+  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
   if (!cfg) return;
-
   const guild  = reaction.message.guild;
   const member = await guild?.members.fetch(user.id).catch(() => null);
   if (!member) return;
-
   await member.roles.add(cfg.roleId).catch(() => {});
 });
 
@@ -226,26 +220,23 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
-
-  const cfg = config.find(o => o.emoji === reaction.emoji.name);
+  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
   if (!cfg) return;
-
   const guild  = reaction.message.guild;
   const member = await guild?.members.fetch(user.id).catch(() => null);
   if (!member) return;
-
   await member.roles.remove(cfg.roleId).catch(() => {});
 });
 
 // ─── MESSAGES ────────────────────────────────────────────
-// Codes d'invitation autorisés (sans le discord.gg/)
 const LIENS_AUTORISES = new Set(["mrag"]);
-const INVITE_REGEX = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
+const INVITE_REGEX    = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
+const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
 
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
 
-  // ── ANTI LIEN ───────────────────────────────────────────────────────────
+  // ── ANTI LIEN ─────────────────────────────────────────────────────────────
   const isModoAntiLink =
     message.member?.permissions.has("ManageMessages") ||
     message.member?.permissions.has("Administrator");
@@ -255,12 +246,12 @@ client.on(Events.MessageCreate, async (message: Message) => {
     const hasLienInterdit = liens.some(m => !LIENS_AUTORISES.has(m[1].toLowerCase()));
 
     if (hasLienInterdit) {
+      const antiPubRoleId = getConfig(message.guild?.id ?? "").antiPubRole ?? DEFAULT_ANTI_PUB_ROLE;
       await message.delete().catch(() => {});
       await message.channel.send(
-        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&1476499085748862986>\n> Les liens vers d'autres serveurs sont interdits ici.`
+        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&${antiPubRoleId}>\n> Les liens vers d'autres serveurs sont interdits ici.`
       ).catch(() => {});
 
-      // Warn automatique
       const warnCmd = commands.get("warn");
       if (warnCmd && message.member) {
         const fakeArgs = [message.author.id, "Lien Discord non autorisé (pub interdite)"];
@@ -273,17 +264,15 @@ client.on(Events.MessageCreate, async (message: Message) => {
     }
   }
 
-  // IA mention
+  // ── IA mention ────────────────────────────────────────────────────────────
   if (client.user && message.mentions.has(client.user)) {
     const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
-
     if (texte) {
       const isMod =
         message.member?.permissions.has("ManageMessages") ||
         message.member?.permissions.has("Administrator");
-
       await message.channel.sendTyping();
-      const reply = await repondreIA(texte, isMod ?? false, message.channelId);
+      const reply = await repondreIA(texte, isMod ?? false, message.channelId, message.guildId ?? undefined);
       await message.reply(reply);
     }
     return;
@@ -291,7 +280,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   if (!message.content.startsWith(PREFIX)) return;
 
-  const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
+  const args        = message.content.slice(PREFIX.length).trim().split(/\s+/);
   const commandName = args.shift()?.toLowerCase();
   if (!commandName) return;
 
