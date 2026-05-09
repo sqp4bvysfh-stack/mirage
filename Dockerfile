@@ -1,6 +1,6 @@
 FROM node:22-slim
 WORKDIR /app
-RUN npm install -g pnpm
+RUN npm install -g pnpm@9
 COPY pnpm-workspace.yaml pnpm-lock.yaml package.json ./
 COPY artifacts/discord-bot ./artifacts/discord-bot
 COPY lib ./lib
