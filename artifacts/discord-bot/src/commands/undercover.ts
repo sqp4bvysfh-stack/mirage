@@ -114,7 +114,7 @@ function makeLobbyEmbed(host: User, players: Map<string, User>) {
     .setDescription(
       `**${host.username}** ouvre une partie !\n\n` +
       `Clique sur ✅ pour rejoindre.\nQuand tout le monde est là, ${userMention(host.id)} clique sur 🚀 pour lancer.\n\n` +
-      `> Min. **3 joueurs** — Max. **12 joueurs**`
+      `> Min. **3 joueurs** — Max. **30 joueurs**`
     )
     .addFields({ name: `👥 Joueurs (${players.size})`, value: liste })
     .setFooter({ text: "✅ rejoindre • 🚀 lancer (host uniquement)" })
@@ -166,8 +166,8 @@ export const undercoverCommand: Command = {
         return;
       }
 
-      if (players.size > 12) {
-        await message.channel.send("❌ Trop de joueurs (maximum 12).");
+      if (players.size > 30) {
+        await message.channel.send("❌ Trop de joueurs (maximum 30).");
         return;
       }
 
