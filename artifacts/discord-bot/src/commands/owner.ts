@@ -8,12 +8,12 @@ function isOwner(userId: string): boolean {
 }
 
 // ─── *massban ─────────────────────────────────────────────
-// Usage: *massban @u1 @u2 ... [raison]
-// Bans every mentioned user + any raw IDs passed.
+// Usage: *massban @role [raison]   → ban tous les membres du rôle
+//        *massban @u1 @u2 [raison] → ban les membres mentionnés
 export const massbanCommand: Command = {
   name: "massban",
-  description: "[OWNER] Bannir plusieurs membres en une fois",
-  usage: "*massban @membre1 @membre2 ... [raison]",
+  description: "[OWNER] Bannir tous les membres d'un rôle (ou membres mentionnés)",
+  usage: "*massban @role [raison]",
   execute: async (message, args) => {
     if (!isOwner(message.author.id)) {
       await message.reply("❌ Commande réservée au propriétaire du bot.");
@@ -21,19 +21,27 @@ export const massbanCommand: Command = {
     }
     if (!message.guild) return;
 
-    const mentionedIds = [...(message.mentions.members?.keys() ?? [])];
-    const rawIds = args.filter(a => /^\d{17,20}$/.test(a));
-    const allIds = [...new Set([...mentionedIds, ...rawIds])];
+    const role = message.mentions.roles.first();
+    const raison = args.filter(a => !a.startsWith("<")).join(" ") || "Mass ban — owner";
 
-    if (allIds.length === 0) {
-      await message.reply("❌ Mentionne au moins un membre ou donne des IDs.\n`*massban @u1 @u2 raison`");
+    let targets: string[] = [];
+
+    if (role) {
+      await message.guild.members.fetch();
+      targets = role.members.map(m => m.id);
+    } else {
+      targets = [...(message.mentions.members?.keys() ?? [])];
+    }
+
+    if (targets.length === 0) {
+      await message.reply("❌ Mentionne un rôle ou des membres.\n`*massban @role raison`");
       return;
     }
 
-    const raison = args.filter(a => !/^\d{17,20}$/.test(a) && !a.startsWith("<@")).join(" ") || "Mass ban — owner";
+    const msg = await message.reply(`⏳ Ban en cours de **${targets.length}** membres...`);
 
     let ok = 0, fail = 0;
-    for (const id of allIds) {
+    for (const id of targets) {
       try {
         await message.guild.bans.create(id, { reason: raison });
         ok++;
@@ -46,18 +54,75 @@ export const massbanCommand: Command = {
       .setColor(0xe74c3c)
       .setTitle("🔨 Mass Ban")
       .addFields(
+        { name: "Cible", value: role ? `<@&${role.id}>` : `${targets.length} membres`, inline: true },
         { name: "Bannis", value: `${ok}`, inline: true },
         { name: "Échecs", value: `${fail}`, inline: true },
         { name: "Raison", value: raison }
       )
       .setTimestamp();
-    await message.reply({ embeds: [embed] });
+    await msg.edit({ content: "", embeds: [embed] });
+  },
+};
+
+// ─── *masskick ────────────────────────────────────────────
+// Usage: *masskick @role [raison]   → kick tous les membres du rôle
+//        *masskick @u1 @u2 [raison] → kick les membres mentionnés
+export const masskickCommand: Command = {
+  name: "masskick",
+  description: "[OWNER] Kick tous les membres d'un rôle (ou membres mentionnés)",
+  usage: "*masskick @role [raison]",
+  execute: async (message, args) => {
+    if (!isOwner(message.author.id)) {
+      await message.reply("❌ Commande réservée au propriétaire du bot.");
+      return;
+    }
+    if (!message.guild) return;
+
+    const role = message.mentions.roles.first();
+    const raison = args.filter(a => !a.startsWith("<")).join(" ") || "Mass kick — owner";
+
+    let targets: import("discord.js").GuildMember[] = [];
+
+    if (role) {
+      await message.guild.members.fetch();
+      targets = [...role.members.values()];
+    } else {
+      targets = [...(message.mentions.members?.values() ?? [])];
+    }
+
+    if (targets.length === 0) {
+      await message.reply("❌ Mentionne un rôle ou des membres.\n`*masskick @role raison`");
+      return;
+    }
+
+    const msg = await message.reply(`⏳ Kick en cours de **${targets.length}** membres...`);
+
+    let ok = 0, fail = 0;
+    for (const m of targets) {
+      try {
+        await m.kick(raison);
+        ok++;
+      } catch {
+        fail++;
+      }
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0xe67e22)
+      .setTitle("👢 Mass Kick")
+      .addFields(
+        { name: "Cible", value: role ? `<@&${role.id}>` : `${targets.length} membres`, inline: true },
+        { name: "Kickés", value: `${ok}`, inline: true },
+        { name: "Échecs", value: `${fail}`, inline: true },
+        { name: "Raison", value: raison }
+      )
+      .setTimestamp();
+    await msg.edit({ content: "", embeds: [embed] });
   },
 };
 
 // ─── *delsalon ────────────────────────────────────────────
 // Usage: *delsalon #salon1 #salon2 ...
-// Deletes every mentioned channel (or the current one if none).
 export const delsalonCommand: Command = {
   name: "delsalon",
   description: "[OWNER] Supprimer un ou plusieurs salons",
@@ -99,7 +164,6 @@ export const delsalonCommand: Command = {
 
 // ─── *broadcast ───────────────────────────────────────────
 // Usage: *broadcast <message>
-// Sends a message to every text channel in the guild.
 export const broadcastCommand: Command = {
   name: "broadcast",
   description: "[OWNER] Envoyer un message dans tous les salons textuels",
@@ -133,49 +197,5 @@ export const broadcastCommand: Command = {
     }
 
     await message.reply(`📢 Message envoyé dans **${ok}** salon(s).${fail ? ` (${fail} échec(s))` : ""}`);
-  },
-};
-
-// ─── *masskick ────────────────────────────────────────────
-// Usage: *masskick @u1 @u2 ... [raison]
-export const masskickCommand: Command = {
-  name: "masskick",
-  description: "[OWNER] Kick plusieurs membres en une fois",
-  usage: "*masskick @membre1 @membre2 ... [raison]",
-  execute: async (message, args) => {
-    if (!isOwner(message.author.id)) {
-      await message.reply("❌ Commande réservée au propriétaire du bot.");
-      return;
-    }
-    if (!message.guild) return;
-
-    const members = [...(message.mentions.members?.values() ?? [])];
-    if (members.length === 0) {
-      await message.reply("❌ Mentionne au moins un membre.\n`*masskick @u1 @u2 raison`");
-      return;
-    }
-
-    const raison = args.filter(a => !a.startsWith("<@")).join(" ") || "Mass kick — owner";
-
-    let ok = 0, fail = 0;
-    for (const m of members) {
-      try {
-        await m.kick(raison);
-        ok++;
-      } catch {
-        fail++;
-      }
-    }
-
-    const embed = new EmbedBuilder()
-      .setColor(0xe67e22)
-      .setTitle("👢 Mass Kick")
-      .addFields(
-        { name: "Kickés", value: `${ok}`, inline: true },
-        { name: "Échecs", value: `${fail}`, inline: true },
-        { name: "Raison", value: raison }
-      )
-      .setTimestamp();
-    await message.reply({ embeds: [embed] });
   },
 };
