@@ -38,6 +38,7 @@ import { boostSetupCommand, handleBoostMember, handleBoostInteraction } from "./
 import { talkCommand } from "./commands/talk.js";
 import { fermetureCommand, ouvertureCommand } from "./commands/fermeture.js";
 import { configCommand } from "./commands/config.js";
+import { massbanCommand, delsalonCommand, broadcastCommand, masskickCommand } from "./commands/owner.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -89,6 +90,10 @@ for (const cmd of [
   fermetureCommand,
   ouvertureCommand,
   configCommand,
+  massbanCommand,
+  delsalonCommand,
+  broadcastCommand,
+  masskickCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
