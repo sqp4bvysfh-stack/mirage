@@ -132,36 +132,62 @@ export const masskickCommand: Command = {
 };
 
 // ─── *parle ───────────────────────────────────────────────
-// Usage (en DM au bot): *parle CHANNEL_ID message
-// Envoie un message dans n'importe quel salon via le bot, même depuis un DM.
+// Usage (en DM au bot):
+//   *parle message          → envoie dans TOUS les salons textuels de tous les serveurs
+//   *parle CHANNEL_ID msg   → envoie uniquement dans ce salon
 export const parleCommand: Command = {
   name: "parle",
-  description: "[OWNER] Envoyer un message dans un salon via DM au bot",
-  usage: "*parle CHANNEL_ID message",
+  description: "[OWNER] Parler via le bot (tous les salons ou un salon précis)",
+  usage: "*parle [CHANNEL_ID] message",
   execute: async (message, args) => {
     if (!isOwner(message.author.id)) {
       await message.reply("❌ Commande réservée au propriétaire du bot.");
       return;
     }
 
-    const channelId = args[0];
-    const texte = args.slice(1).join(" ");
-
-    if (!channelId || !texte) {
-      await message.reply("❌ Usage : `*parle CHANNEL_ID ton message`");
+    if (args.length === 0) {
+      await message.reply("❌ Usage : `*parle message` ou `*parle CHANNEL_ID message`");
       return;
     }
 
-    try {
-      const channel = await message.client.channels.fetch(channelId);
-      if (!channel?.isTextBased()) {
-        await message.reply("❌ Salon introuvable ou pas un salon textuel.");
+    const isId = /^\d{17,20}$/.test(args[0]);
+
+    if (isId) {
+      const channelId = args[0];
+      const texte = args.slice(1).join(" ");
+      if (!texte) {
+        await message.reply("❌ Écris un message après l'ID du salon.");
         return;
       }
-      await (channel as import("discord.js").TextChannel).send(texte);
-      await message.reply(`✅ Message envoyé dans <#${channelId}>.`);
-    } catch {
-      await message.reply("❌ Impossible d'envoyer le message (salon introuvable ou permissions insuffisantes).");
+      try {
+        const channel = await message.client.channels.fetch(channelId);
+        if (!channel?.isTextBased()) {
+          await message.reply("❌ Salon introuvable ou pas un salon textuel.");
+          return;
+        }
+        await (channel as import("discord.js").TextChannel).send(texte);
+        await message.reply(`✅ Message envoyé dans <#${channelId}>.`);
+      } catch {
+        await message.reply("❌ Impossible d'envoyer (salon introuvable ou permissions insuffisantes).");
+      }
+    } else {
+      const texte = args.join(" ");
+      let ok = 0, fail = 0;
+      for (const [, guild] of message.client.guilds.cache) {
+        const salons = guild.channels.cache.filter(
+          c => c.type === ChannelType.GuildText &&
+               c.permissionsFor(guild.members.me!)?.has(PermissionFlagsBits.SendMessages)
+        );
+        for (const [, salon] of salons) {
+          try {
+            await (salon as import("discord.js").TextChannel).send(texte);
+            ok++;
+          } catch {
+            fail++;
+          }
+        }
+      }
+      await message.reply(`📢 Message envoyé dans **${ok}** salon(s).${fail ? ` (${fail} échec(s))` : ""}`);
     }
   },
 };
