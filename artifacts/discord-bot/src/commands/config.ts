@@ -72,10 +72,20 @@ export const configCommand: Command = {
 
     // ── *config export ─────────────────────────────────────────────────────
     if (sub === "export") {
-      const json = exportConfigJson();
+      const cfg = getConfig(guildId);
+      const lines = VALID_KEYS
+        .filter(k => cfg[k])
+        .map(k => `*config set ${k} ${cfg[k]}`);
+
+      if (lines.length === 0) {
+        await message.reply("❌ Aucune config définie sur ce serveur.");
+        return;
+      }
+
       await message.reply(
-        `✅ **Copie ce JSON et colle-le dans la variable \`BOT_CONFIG\` sur Railway.**\n` +
-        `Elle sera chargée automatiquement à chaque redémarrage.\n\`\`\`json\n${json}\n\`\`\``
+        `📋 **Config actuelle — ${message.guild!.name}**\n` +
+        `Copie-colle ces commandes pour tout reconfigurer après un redémarrage :\n` +
+        `\`\`\`\n${lines.join("\n")}\n\`\`\``
       );
       return;
     }
