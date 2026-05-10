@@ -1,4 +1,4 @@
-import { EmbedBuilder } from "discord.js";
+import { EmbedBuilder, Message } from "discord.js";
 import type { Command } from "../types.js";
 import { BOT_OWNER_ID } from "./owner.js";
 
@@ -8,114 +8,115 @@ async function urlToBuffer(url: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
+async function ask(
+  message: Message,
+  question: string,
+): Promise<Message | null> {
+  await message.channel.send(question);
+  const collected = await message.channel.awaitMessages({
+    filter: (m) => m.author.id === message.author.id,
+    max: 1,
+    time: 60_000,
+  });
+  return collected.first() ?? null;
+}
+
+function getMediaUrl(msg: Message): string | null {
+  const attachment = msg.attachments.first();
+  if (attachment) return attachment.url;
+  const url = msg.content.trim();
+  if (url.startsWith("http")) return url;
+  return null;
+}
+
 export const botprofilCommand: Command = {
   name: "botprofil",
-  description: "[OWNER] Modifier le profil du bot par serveur (pseudo, avatar, bannière).",
-  usage: "*botprofil pseudo <nom> | *botprofil avatar <url> | *botprofil banniere <url> | *botprofil reset",
+  description: "[OWNER] Modifier le profil du bot sur ce serveur (guide interactif).",
+  usage: "*botprofil",
 
-  async execute(message, args) {
+  async execute(message, _args) {
     if (message.author.id !== BOT_OWNER_ID) {
       await message.reply("❌ Commande réservée au propriétaire du bot.");
       return;
     }
     if (!message.guild) return;
 
-    const sub = args[0]?.toLowerCase();
+    await message.reply(
+      "🤖 **Configuration du profil — " + message.guild.name + "**\nRéponds à chaque question. Tape `skip` pour ignorer une étape. Tu as **60 secondes** par question."
+    );
 
-    // ─── *botprofil pseudo <nom> ──────────────────────────
-    if (sub === "pseudo") {
-      const nom = args.slice(1).join(" ");
-      if (!nom) {
-        await message.reply("❌ Donne un nom. Ex : `*botprofil pseudo MIRAGE`");
-        return;
-      }
-      try {
-        await message.guild.members.me!.setNickname(nom);
-        const embed = new EmbedBuilder()
-          .setColor(0x2ecc71)
-          .setTitle("✅ Pseudo mis à jour")
-          .addFields(
-            { name: "Serveur",        value: message.guild.name, inline: true },
-            { name: "Nouveau pseudo", value: `\`${nom}\``,        inline: true },
-          )
-          .setFooter({ text: "Uniquement sur ce serveur." })
-          .setTimestamp();
-        await message.reply({ embeds: [embed] });
-      } catch {
-        await message.reply("❌ Impossible de changer le pseudo.");
-      }
-      return;
+    let pseudo: string | null = null;
+    let avatarBuffer: Buffer | null = null;
+    let bannerBuffer: Buffer | null = null;
+    let bannerUrl: string | null = null;
+
+    // ─── Étape 1 : pseudo ─────────────────────────────────
+    const repPseudo = await ask(message, "**1/3** — Quel pseudo veux-tu pour le bot sur ce serveur ? (ou `skip`)");
+    if (!repPseudo) { await message.channel.send("⏱ Temps écoulé, annulation."); return; }
+    if (repPseudo.content.toLowerCase() !== "skip") {
+      pseudo = repPseudo.content.trim();
     }
 
-    // ─── *botprofil avatar <url> ──────────────────────────
-    if (sub === "avatar") {
-      const url = args[1];
-      if (!url?.startsWith("http")) {
-        await message.reply("❌ Donne une URL d'image. Ex : `*botprofil avatar https://...`");
-        return;
+    // ─── Étape 2 : avatar ──────────────────────────────────
+    const repAvatar = await ask(message, "**2/3** — Envoie une image ou GIF pour l'avatar (ou colle une URL, ou `skip`) :");
+    if (!repAvatar) { await message.channel.send("⏱ Temps écoulé, annulation."); return; }
+    if (repAvatar.content.toLowerCase() !== "skip") {
+      const url = getMediaUrl(repAvatar);
+      if (url) {
+        try { avatarBuffer = await urlToBuffer(url); }
+        catch { await message.channel.send("⚠️ Impossible de charger l'image de l'avatar — étape ignorée."); }
+      } else {
+        await message.channel.send("⚠️ Format non reconnu — étape ignorée.");
       }
-      try {
-        const buffer = await urlToBuffer(url);
-        await message.guild.members.me!.edit({ avatar: buffer });
-        const embed = new EmbedBuilder()
-          .setColor(0x2ecc71)
-          .setTitle("✅ Avatar mis à jour sur ce serveur")
-          .setThumbnail(message.guild.members.me!.displayAvatarURL({ size: 256 }))
-          .setFooter({ text: "Uniquement sur ce serveur — les autres ne sont pas affectés." })
-          .setTimestamp();
-        await message.reply({ embeds: [embed] });
-      } catch {
-        await message.reply("❌ Impossible de changer l'avatar (URL invalide, format non supporté ou rate limit).");
-      }
-      return;
     }
 
-    // ─── *botprofil banniere <url> ────────────────────────
-    if (sub === "banniere") {
-      const url = args[1];
-      if (!url?.startsWith("http")) {
-        await message.reply("❌ Donne une URL d'image. Ex : `*botprofil banniere https://...`");
-        return;
+    // ─── Étape 3 : bannière ───────────────────────────────
+    const repBanner = await ask(message, "**3/3** — Envoie une image ou GIF pour la bannière (ou colle une URL, ou `skip`) :");
+    if (!repBanner) { await message.channel.send("⏱ Temps écoulé, annulation."); return; }
+    if (repBanner.content.toLowerCase() !== "skip") {
+      const url = getMediaUrl(repBanner);
+      if (url) {
+        bannerUrl = url;
+        try { bannerBuffer = await urlToBuffer(url); }
+        catch { await message.channel.send("⚠️ Impossible de charger l'image de la bannière — étape ignorée."); }
+      } else {
+        await message.channel.send("⚠️ Format non reconnu — étape ignorée.");
       }
-      try {
-        const buffer = await urlToBuffer(url);
-        await message.guild.members.me!.edit({ banner: buffer } as any);
-        const embed = new EmbedBuilder()
-          .setColor(0x2ecc71)
-          .setTitle("✅ Bannière mise à jour sur ce serveur")
-          .setImage(url)
-          .setFooter({ text: "Uniquement sur ce serveur." })
-          .setTimestamp();
-        await message.reply({ embeds: [embed] });
-      } catch {
-        await message.reply("❌ Impossible de changer la bannière (URL invalide, format non supporté ou rate limit).");
-      }
-      return;
     }
 
-    // ─── *botprofil reset ─────────────────────────────────
-    if (sub === "reset") {
-      try {
-        await message.guild.members.me!.edit({ nick: null, avatar: null } as any);
-        await message.reply(`✅ Profil remis par défaut sur **${message.guild.name}**.`);
-      } catch {
-        await message.reply("❌ Impossible de reset le profil.");
-      }
-      return;
+    // ─── Application ──────────────────────────────────────
+    const errors: string[] = [];
+
+    if (pseudo !== null) {
+      try { await message.guild.members.me!.setNickname(pseudo); }
+      catch { errors.push("pseudo"); }
     }
 
-    // ─── Aide ─────────────────────────────────────────────
+    if (avatarBuffer) {
+      try { await message.guild.members.me!.edit({ avatar: avatarBuffer }); }
+      catch { errors.push("avatar"); }
+    }
+
+    if (bannerBuffer) {
+      try { await message.guild.members.me!.edit({ banner: bannerBuffer } as any); }
+      catch { errors.push("bannière"); }
+    }
+
+    // ─── Récapitulatif ────────────────────────────────────
     const embed = new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setTitle("🤖 Profil du bot — par serveur")
+      .setColor(errors.length === 0 ? 0x2ecc71 : 0xe67e22)
+      .setTitle("✅ Profil mis à jour — " + message.guild.name)
       .addFields(
-        { name: "`*botprofil pseudo <nom>`",    value: "Change le pseudo sur ce serveur uniquement." },
-        { name: "`*botprofil avatar <url>`",    value: "Change l'avatar sur ce serveur (GIF supporté)." },
-        { name: "`*botprofil banniere <url>`",  value: "Change la bannière sur ce serveur (GIF supporté)." },
-        { name: "`*botprofil reset`",            value: "Remet le profil par défaut sur ce serveur." },
+        { name: "Pseudo",   value: pseudo   ?? "_ignoré_", inline: true },
+        { name: "Avatar",   value: avatarBuffer ? "✅ appliqué" : "_ignoré_", inline: true },
+        { name: "Bannière", value: bannerBuffer  ? "✅ appliquée" : "_ignoré_", inline: true },
       )
       .setThumbnail(message.guild.members.me!.displayAvatarURL({ size: 256 }))
       .setTimestamp();
-    await message.reply({ embeds: [embed] });
+
+    if (bannerUrl && bannerBuffer) embed.setImage(bannerUrl);
+    if (errors.length > 0) embed.setFooter({ text: `Erreur sur : ${errors.join(", ")}` });
+
+    await message.channel.send({ embeds: [embed] });
   },
 };
