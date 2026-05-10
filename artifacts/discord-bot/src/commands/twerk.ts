@@ -9,7 +9,7 @@ export const twerkCommand: Command = {
   execute: async (message) => {
     await message.delete().catch(() => {});
 
-    const gif = readFileSync(join(process.cwd(), "../../attached_assets/DC085010-649E-4644-8F22-221870F38AA3.gif"));
+    const gif = readFileSync(join(process.cwd(), "assets/twerk.gif"));
 
     await message.channel.send({
       files: [{ attachment: gif, name: "twerk.gif" }],

@@ -2,6 +2,7 @@ FROM node:22-slim
 WORKDIR /app
 
 COPY src ./src
+COPY assets ./assets
 COPY tsconfig.json ./tsconfig.json
 
 RUN node -e "require('fs').writeFileSync('package.json', JSON.stringify({ \
