@@ -101,6 +101,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*stats`",             value: "Stats du serveur : membres, boosts, messages, gens en vocal." },
         { name: "`*userinfo [@membre]`", value: "Infos détaillées d'un membre (compte, rôles, badges, banner)." },
         { name: "`*aide`",              value: "Ce panneau d'aide." },
+        { name: "`*dm @membre message`", value: "Envoie un DM via le bot à un membre (modo). `*dm @role message` pour tout un rôle (owner)." },
         { name: "`*say [texte]`",       value: "Le bot envoie le message et supprime le tien (modo)." },
         { name: "`*send + fichier`",    value: "Envoie un fichier/image via le bot (modo)." },
         { name: "`*talk [#salon]`",     value: "Envoie un message en tant que le bot avec formatage préservé + image optionnelle. Guidé en 2 étapes." },

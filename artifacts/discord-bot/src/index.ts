@@ -42,6 +42,7 @@ import { configCommand } from "./commands/config.js";
 import { massbanCommand, delsalonCommand, broadcastCommand, masskickCommand, parleCommand } from "./commands/owner.js";
 import { userinfoCommand } from "./commands/userinfo.js";
 import { statsCommand, incrementMessages } from "./commands/stats.js";
+import { dmCommand } from "./commands/dm.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -100,6 +101,7 @@ for (const cmd of [
   parleCommand,
   userinfoCommand,
   statsCommand,
+  dmCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
