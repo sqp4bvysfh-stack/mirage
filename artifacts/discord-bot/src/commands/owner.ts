@@ -131,6 +131,41 @@ export const masskickCommand: Command = {
   },
 };
 
+// ─── *parle ───────────────────────────────────────────────
+// Usage (en DM au bot): *parle CHANNEL_ID message
+// Envoie un message dans n'importe quel salon via le bot, même depuis un DM.
+export const parleCommand: Command = {
+  name: "parle",
+  description: "[OWNER] Envoyer un message dans un salon via DM au bot",
+  usage: "*parle CHANNEL_ID message",
+  execute: async (message, args) => {
+    if (!isOwner(message.author.id)) {
+      await message.reply("❌ Commande réservée au propriétaire du bot.");
+      return;
+    }
+
+    const channelId = args[0];
+    const texte = args.slice(1).join(" ");
+
+    if (!channelId || !texte) {
+      await message.reply("❌ Usage : `*parle CHANNEL_ID ton message`");
+      return;
+    }
+
+    try {
+      const channel = await message.client.channels.fetch(channelId);
+      if (!channel?.isTextBased()) {
+        await message.reply("❌ Salon introuvable ou pas un salon textuel.");
+        return;
+      }
+      await (channel as import("discord.js").TextChannel).send(texte);
+      await message.reply(`✅ Message envoyé dans <#${channelId}>.`);
+    } catch {
+      await message.reply("❌ Impossible d'envoyer le message (salon introuvable ou permissions insuffisantes).");
+    }
+  },
+};
+
 // ─── *delsalon ────────────────────────────────────────────
 // Usage: *delsalon #salon1 #salon2 ...
 export const delsalonCommand: Command = {
