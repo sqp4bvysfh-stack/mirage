@@ -6,6 +6,7 @@ import {
   type Interaction,
 } from "discord.js";
 import type { Command } from "../types.js";
+import { BOT_OWNER_ID } from "./owner.js";
 
 // ─── Contenu par catégorie ─────────────────────────────────────────────────
 
@@ -104,6 +105,23 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       ),
   },
 
+  owner: {
+    emoji: "👑",
+    label: "Owner",
+    embed: new EmbedBuilder()
+      .setColor(0xf1c40f)
+      .setTitle("👑 Commandes Owner")
+      .setDescription("Réservées exclusivement au propriétaire du bot.")
+      .addFields(
+        { name: "`*massban @role [raison]`",  value: "Bannit tous les membres d'un rôle en une fois." },
+        { name: "`*masskick @role [raison]`", value: "Kick tous les membres d'un rôle en une fois." },
+        { name: "`*delsalon #salon1 ...`",    value: "Supprime les salons mentionnés (ou le salon actuel)." },
+        { name: "`*broadcast message`",        value: "Envoie un message dans tous les salons du serveur." },
+        { name: "`*parle message`",            value: "Envoie un message dans **tous** les salons de **tous** les serveurs." },
+        { name: "`*parle CHANNEL_ID msg`",     value: "Envoie un message dans un salon précis (fonctionne en DM au bot)." },
+      ),
+  },
+
   config: {
     emoji: "⚙️",
     label: "Config bot",
@@ -196,6 +214,7 @@ function makePanelRows() {
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("aide_cat_config").setLabel("⚙️ Config bot").setStyle(ButtonStyle.Secondary),
+    new ButtonBuilder().setCustomId("aide_cat_owner").setLabel("👑 Owner").setStyle(ButtonStyle.Secondary),
   );
   return [row1, row2];
 }
@@ -207,6 +226,12 @@ export async function handleAideInteraction(interaction: Interaction) {
   if (!interaction.customId.startsWith("aide_cat_")) return;
 
   const key = interaction.customId.replace("aide_cat_", "");
+
+  if (key === "owner" && interaction.user.id !== BOT_OWNER_ID) {
+    await interaction.reply({ content: "❌ Cet onglet est réservé au propriétaire du bot.", ephemeral: true });
+    return;
+  }
+
   const cat = CATEGORIES[key];
   if (!cat) return;
 
