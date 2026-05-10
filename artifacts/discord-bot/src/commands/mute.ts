@@ -54,14 +54,23 @@ export const muteCommand: Command = {
 
     const raison = args.filter(a => !/^\d+(s|m|h|j)$/.test(a) && !a.startsWith("<@")).join(" ") || "Aucune raison fournie";
 
-    await target.timeout(duration, raison);
+    try {
+      await target.timeout(duration, raison);
+    } catch {
+      await message.reply(
+        "❌ Impossible de mute ce membre. Vérifie que :\n" +
+        "• Le bot a la permission **Modérer les membres**\n" +
+        "• Le rôle du bot est **au-dessus** du membre dans la hiérarchie"
+      );
+      return;
+    }
 
     const embed = new EmbedBuilder()
       .setColor(0xf39c12)
       .setTitle("🔇 Membre mute")
       .addFields(
         { name: "Membre", value: target.user.tag, inline: true },
-        { name: "Durée", value: durStr, inline: true },
+        { name: "Durée", value: durStr!, inline: true },
         { name: "Modérateur", value: message.author.tag, inline: true },
         { name: "Raison", value: raison }
       )

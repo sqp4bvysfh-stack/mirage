@@ -21,11 +21,20 @@ export const banCommand: Command = {
       return;
     }
     if (!target.bannable) {
-      await message.reply("❌ Je ne peux pas bannir ce membre.");
+      await message.reply(
+        "❌ Je ne peux pas bannir ce membre. Vérifie que :\n" +
+        "• Le rôle du bot est **au-dessus** de ce membre dans la hiérarchie Discord\n" +
+        "• Le bot a la permission **Bannir des membres**"
+      );
       return;
     }
     const raison = args.slice(1).join(" ") || "Aucune raison fournie";
-    await target.ban({ reason: raison });
+    try {
+      await target.ban({ reason: raison });
+    } catch {
+      await message.reply("❌ Erreur lors du ban — vérifie les permissions du bot.");
+      return;
+    }
     const embed = new EmbedBuilder()
       .setColor(0xe74c3c)
       .setTitle("🔨 Membre banni")
