@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
 import { join } from "node:path";
 
 // ─── Types ────────────────────────────────────────────────────────────────
@@ -44,7 +44,16 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
 
 // ─── Stockage ─────────────────────────────────────────────────────────────
 
-const CONFIG_FILE = join(process.cwd(), "server-config.json");
+// /data est un volume persistant sur Railway (survit aux redéploiements).
+// Si le dossier n'existe pas (dev local), on retombe sur le répertoire courant.
+const CONFIG_FILE = (() => {
+  try {
+    if (!existsSync("/data")) mkdirSync("/data", { recursive: true });
+    return "/data/server-config.json";
+  } catch {
+    return join(process.cwd(), "server-config.json");
+  }
+})();
 const store       = new Map<string, GuildConfig>();
 
 function loadData(raw: string): void {
