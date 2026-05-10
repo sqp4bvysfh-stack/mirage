@@ -96,12 +96,14 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .setColor(0x5865f2)
       .setTitle("ℹ️ Utilitaires")
       .addFields(
-        { name: "`*ping`",           value: "Affiche la latence du bot." },
-        { name: "`*info`",           value: "Infos du serveur." },
-        { name: "`*aide`",           value: "Ce panneau d'aide." },
-        { name: "`*say [texte]`",    value: "Le bot envoie le message et supprime le tien (modo)." },
-        { name: "`*send + fichier`", value: "Envoie un fichier/image via le bot (modo)." },
-        { name: "`*talk [#salon]`",  value: "Envoie un message en tant que le bot avec formatage préservé + image optionnelle. Guidé en 2 étapes." },
+        { name: "`*ping`",              value: "Affiche la latence du bot." },
+        { name: "`*info`",              value: "Infos du serveur." },
+        { name: "`*stats`",             value: "Stats du serveur : membres, boosts, messages, gens en vocal." },
+        { name: "`*userinfo [@membre]`", value: "Infos détaillées d'un membre (compte, rôles, badges, banner)." },
+        { name: "`*aide`",              value: "Ce panneau d'aide." },
+        { name: "`*say [texte]`",       value: "Le bot envoie le message et supprime le tien (modo)." },
+        { name: "`*send + fichier`",    value: "Envoie un fichier/image via le bot (modo)." },
+        { name: "`*talk [#salon]`",     value: "Envoie un message en tant que le bot avec formatage préservé + image optionnelle. Guidé en 2 étapes." },
       ),
   },
 

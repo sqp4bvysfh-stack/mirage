@@ -40,6 +40,8 @@ import { talkCommand } from "./commands/talk.js";
 import { fermetureCommand, ouvertureCommand } from "./commands/fermeture.js";
 import { configCommand } from "./commands/config.js";
 import { massbanCommand, delsalonCommand, broadcastCommand, masskickCommand, parleCommand } from "./commands/owner.js";
+import { userinfoCommand } from "./commands/userinfo.js";
+import { statsCommand, incrementMessages } from "./commands/stats.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -96,6 +98,8 @@ for (const cmd of [
   broadcastCommand,
   masskickCommand,
   parleCommand,
+  userinfoCommand,
+  statsCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -245,6 +249,7 @@ const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
 
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
+  if (message.guild) incrementMessages(message.guild.id);
 
   // ── ANTI LIEN ─────────────────────────────────────────────────────────────
   const isModoAntiLink =
