@@ -8,10 +8,7 @@ async function urlToBuffer(url: string): Promise<Buffer> {
   return Buffer.from(await res.arrayBuffer());
 }
 
-async function ask(
-  message: Message,
-  question: string,
-): Promise<Message | null> {
+async function ask(message: Message, question: string): Promise<Message | null> {
   await message.channel.send(question);
   const collected = await message.channel.awaitMessages({
     filter: (m) => m.author.id === message.author.id,
@@ -31,7 +28,7 @@ function getMediaUrl(msg: Message): string | null {
 
 export const botprofilCommand: Command = {
   name: "botprofil",
-  description: "[OWNER] Modifier le profil du bot sur ce serveur (guide interactif).",
+  description: "[OWNER] Modifier le profil du bot (pseudo par serveur, avatar/bannière global).",
   usage: "*botprofil",
 
   async execute(message, _args) {
@@ -42,43 +39,47 @@ export const botprofilCommand: Command = {
     if (!message.guild) return;
 
     await message.reply(
-      "🤖 **Configuration du profil — " + message.guild.name + "**\nRéponds à chaque question. Tape `skip` pour ignorer une étape. Tu as **60 secondes** par question."
+      `🤖 **Configuration du profil — ${message.guild.name}**\n` +
+      `Réponds à chaque question ou tape \`skip\`. Tu as **60 secondes** par question.\n` +
+      `> ⚠️ L'avatar et la bannière changent sur **tous les serveurs** (limite Discord pour les bots).`
     );
 
     let pseudo: string | null = null;
     let avatarBuffer: Buffer | null = null;
     let bannerBuffer: Buffer | null = null;
-    let bannerUrl: string | null = null;
+    let bannerPreviewUrl: string | null = null;
+    let avatarPreviewUrl: string | null = null;
 
-    // ─── Étape 1 : pseudo ─────────────────────────────────
-    const repPseudo = await ask(message, "**1/3** — Quel pseudo veux-tu pour le bot sur ce serveur ? (ou `skip`)");
+    // ─── 1 : pseudo (par serveur) ─────────────────────────
+    const repPseudo = await ask(message, "**1/3** — Quel pseudo pour le bot sur ce serveur ? (ou `skip`)");
     if (!repPseudo) { await message.channel.send("⏱ Temps écoulé, annulation."); return; }
     if (repPseudo.content.toLowerCase() !== "skip") {
       pseudo = repPseudo.content.trim();
     }
 
-    // ─── Étape 2 : avatar ──────────────────────────────────
-    const repAvatar = await ask(message, "**2/3** — Envoie une image ou GIF pour l'avatar (ou colle une URL, ou `skip`) :");
+    // ─── 2 : avatar (global) ──────────────────────────────
+    const repAvatar = await ask(message, "**2/3** — Envoie une image/GIF pour l'avatar (s'applique partout) ou `skip` :");
     if (!repAvatar) { await message.channel.send("⏱ Temps écoulé, annulation."); return; }
     if (repAvatar.content.toLowerCase() !== "skip") {
       const url = getMediaUrl(repAvatar);
       if (url) {
+        avatarPreviewUrl = url;
         try { avatarBuffer = await urlToBuffer(url); }
-        catch { await message.channel.send("⚠️ Impossible de charger l'image de l'avatar — étape ignorée."); }
+        catch { await message.channel.send("⚠️ Impossible de charger l'image — étape ignorée."); }
       } else {
         await message.channel.send("⚠️ Format non reconnu — étape ignorée.");
       }
     }
 
-    // ─── Étape 3 : bannière ───────────────────────────────
-    const repBanner = await ask(message, "**3/3** — Envoie une image ou GIF pour la bannière (ou colle une URL, ou `skip`) :");
+    // ─── 3 : bannière (global) ────────────────────────────
+    const repBanner = await ask(message, "**3/3** — Envoie une image/GIF pour la bannière (s'applique partout) ou `skip` :");
     if (!repBanner) { await message.channel.send("⏱ Temps écoulé, annulation."); return; }
     if (repBanner.content.toLowerCase() !== "skip") {
       const url = getMediaUrl(repBanner);
       if (url) {
-        bannerUrl = url;
+        bannerPreviewUrl = url;
         try { bannerBuffer = await urlToBuffer(url); }
-        catch { await message.channel.send("⚠️ Impossible de charger l'image de la bannière — étape ignorée."); }
+        catch { await message.channel.send("⚠️ Impossible de charger l'image — étape ignorée."); }
       } else {
         await message.channel.send("⚠️ Format non reconnu — étape ignorée.");
       }
@@ -93,28 +94,28 @@ export const botprofilCommand: Command = {
     }
 
     if (avatarBuffer) {
-      try { await message.guild.members.me!.edit({ avatar: avatarBuffer }); }
+      try { await message.client.user.setAvatar(avatarBuffer); }
       catch { errors.push("avatar"); }
     }
 
     if (bannerBuffer) {
-      try { await message.guild.members.me!.edit({ banner: bannerBuffer } as any); }
+      try { await message.client.user.setBanner(bannerBuffer); }
       catch { errors.push("bannière"); }
     }
 
-    // ─── Récapitulatif ────────────────────────────────────
+    // ─── Récap ────────────────────────────────────────────
     const embed = new EmbedBuilder()
       .setColor(errors.length === 0 ? 0x2ecc71 : 0xe67e22)
-      .setTitle("✅ Profil mis à jour — " + message.guild.name)
+      .setTitle("✅ Profil mis à jour")
       .addFields(
-        { name: "Pseudo",   value: pseudo   ?? "_ignoré_", inline: true },
-        { name: "Avatar",   value: avatarBuffer ? "✅ appliqué" : "_ignoré_", inline: true },
-        { name: "Bannière", value: bannerBuffer  ? "✅ appliquée" : "_ignoré_", inline: true },
+        { name: "Pseudo",    value: pseudo        ? `\`${pseudo}\` _(ce serveur)_` : "_ignoré_", inline: true },
+        { name: "Avatar",    value: avatarBuffer  ? "✅ _(global)_" : "_ignoré_",                inline: true },
+        { name: "Bannière",  value: bannerBuffer  ? "✅ _(global)_" : "_ignoré_",                inline: true },
       )
-      .setThumbnail(message.guild.members.me!.displayAvatarURL({ size: 256 }))
+      .setThumbnail(message.client.user.displayAvatarURL({ size: 256, forceStatic: false }))
       .setTimestamp();
 
-    if (bannerUrl && bannerBuffer) embed.setImage(bannerUrl);
+    if (bannerPreviewUrl && bannerBuffer) embed.setImage(bannerPreviewUrl);
     if (errors.length > 0) embed.setFooter({ text: `Erreur sur : ${errors.join(", ")}` });
 
     await message.channel.send({ embeds: [embed] });
