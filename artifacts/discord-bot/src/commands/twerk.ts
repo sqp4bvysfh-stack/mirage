@@ -1,6 +1,10 @@
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { Command } from "../types.js";
+
+const __dirname = dirname(fileURLToPath(import.meta.url));
+const GIF_PATH  = join(__dirname, "../../assets/twerk.gif");
 
 export const twerkCommand: Command = {
   name: "twerk",
@@ -8,11 +12,14 @@ export const twerkCommand: Command = {
   usage: "*twerk",
   execute: async (message) => {
     await message.delete().catch(() => {});
-
-    const gif = readFileSync(join(process.cwd(), "assets/twerk.gif"));
-
-    await message.channel.send({
-      files: [{ attachment: gif, name: "twerk.gif" }],
-    });
+    try {
+      const gif = readFileSync(GIF_PATH);
+      await message.channel.send({
+        files: [{ attachment: gif, name: "twerk.gif" }],
+      });
+    } catch (err) {
+      await message.channel.send("❌ GIF introuvable.").catch(() => {});
+      console.error("twerk GIF manquant :", GIF_PATH, err);
+    }
   },
 };
