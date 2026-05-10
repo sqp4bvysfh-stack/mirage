@@ -122,7 +122,11 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*delsalon #salon1 ...`",    value: "Supprime les salons mentionnés (ou le salon actuel)." },
         { name: "`*broadcast message`",        value: "Envoie un message dans tous les salons du serveur." },
         { name: "`*parle message`",            value: "Envoie un message dans **tous** les salons de **tous** les serveurs." },
-        { name: "`*parle CHANNEL_ID msg`",     value: "Envoie un message dans un salon précis (fonctionne en DM au bot)." },
+        { name: "`*parle CHANNEL_ID msg`",       value: "Envoie un message dans un salon précis (fonctionne en DM au bot)." },
+        { name: "`*botprofil pseudo <nom>`",    value: "Change le pseudo du bot sur ce serveur uniquement." },
+        { name: "`*botprofil avatar <url>`",    value: "Change l'avatar du bot sur ce serveur (GIF supporté)." },
+        { name: "`*botprofil banniere <url>`",  value: "Change la bannière du bot sur ce serveur (GIF supporté)." },
+        { name: "`*botprofil reset`",            value: "Remet le profil par défaut sur ce serveur." },
       ),
   },
 

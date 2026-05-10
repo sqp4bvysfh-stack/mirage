@@ -105,6 +105,7 @@ for (const cmd of [
   statsCommand,
   dmCommand,
   serverprofileCommand,
+  botprofilCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
