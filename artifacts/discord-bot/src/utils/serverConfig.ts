@@ -47,20 +47,29 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
 const CONFIG_FILE = join(process.cwd(), "server-config.json");
 const store       = new Map<string, GuildConfig>();
 
-// Charger au démarrage
-try {
-  const raw  = readFileSync(CONFIG_FILE, "utf-8");
+function loadData(raw: string): void {
   const data = JSON.parse(raw) as Record<string, GuildConfig>;
   for (const [guildId, cfg] of Object.entries(data)) {
     store.set(guildId, cfg);
   }
-} catch { /* fichier inexistant au premier démarrage */ }
+}
+
+// 1. Charger depuis la variable d'env BOT_CONFIG (persiste sur Railway)
+if (process.env.BOT_CONFIG) {
+  try { loadData(process.env.BOT_CONFIG); } catch { /* malformé */ }
+}
+
+// 2. Fusionner avec le fichier local (plus récent que l'env si le bot a tourné)
+try {
+  const raw = readFileSync(CONFIG_FILE, "utf-8");
+  loadData(raw);
+} catch { /* fichier inexistant */ }
 
 function save(): void {
   const data: Record<string, GuildConfig> = {};
   for (const [guildId, cfg] of store) data[guildId] = cfg;
-  try { writeFileSync(CONFIG_FILE, JSON.stringify(data, null, 2)); }
-  catch (err) { console.error("Erreur sauvegarde config:", err); }
+  const json = JSON.stringify(data, null, 2);
+  try { writeFileSync(CONFIG_FILE, json); } catch { /* lecture seule */ }
 }
 
 // ─── API publique ──────────────────────────────────────────────────────────
@@ -75,9 +84,15 @@ export function setConfig(guildId: string, key: ConfigKey, value: string): void 
   save();
 }
 
+/** Retourne la config complète encodée en JSON — à coller dans BOT_CONFIG sur Railway */
+export function exportConfigJson(): string {
+  const data: Record<string, GuildConfig> = {};
+  for (const [guildId, cfg] of store) data[guildId] = cfg;
+  return JSON.stringify(data);
+}
+
 /** Extrait un ID brut depuis une mention Discord ou renvoie la valeur telle quelle */
 export function extractId(value: string): string {
-  // <#channelId> | <@&roleId> | <@userId>
   const match = value.match(/^<[#@&]+(\d+)>$/);
   return match ? match[1] : value.trim();
 }

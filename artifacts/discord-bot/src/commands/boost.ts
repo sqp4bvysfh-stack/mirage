@@ -21,10 +21,9 @@ export async function handleBoostMember(
   oldMember: GuildMember,
   newMember: GuildMember
 ): Promise<void> {
-  if (oldMember.partial) {
-    try { oldMember = await oldMember.fetch(); } catch { return; }
-  }
-
+  // Ne PAS fetch oldMember : fetcher donne l'état ACTUEL (boost déjà actif),
+  // pas l'ancien état — la comparaison serait toujours fausse.
+  // On utilise les données partielles telles quelles : premiumSince est null si inconnu.
   const vientDeBooster = !oldMember.premiumSince && !!newMember.premiumSince;
   if (!vientDeBooster) return;
 

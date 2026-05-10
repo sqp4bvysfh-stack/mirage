@@ -5,6 +5,7 @@ import {
   getConfig,
   setConfig,
   extractId,
+  exportConfigJson,
   CONFIG_DESCRIPTIONS,
   type ConfigKey,
 } from "../utils/serverConfig.js";
@@ -69,6 +70,16 @@ export const configCommand: Command = {
       return;
     }
 
-    await message.reply("❌ Sous-commande inconnue. Utilise `*config list` ou `*config set <clé> <valeur>`.");
+    // ── *config export ─────────────────────────────────────────────────────
+    if (sub === "export") {
+      const json = exportConfigJson();
+      await message.reply(
+        `✅ **Copie ce JSON et colle-le dans la variable \`BOT_CONFIG\` sur Railway.**\n` +
+        `Elle sera chargée automatiquement à chaque redémarrage.\n\`\`\`json\n${json}\n\`\`\``
+      );
+      return;
+    }
+
+    await message.reply("❌ Sous-commande inconnue. Utilise `*config list`, `*config set <clé> <valeur>` ou `*config export`.");
   },
 };
