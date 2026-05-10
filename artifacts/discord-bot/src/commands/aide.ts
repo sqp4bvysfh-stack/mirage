@@ -169,7 +169,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
           name: "🤖 IA & Divers",
           value:
             "`botName` — Nom de l'IA (affiché dans ses réponses)\n" +
-            "`antiPubRole` — Rôle à mentionner dans les avertissements anti-pub",
+            "`antiPubRole` — Rôle à mentionner dans les avertissements anti-pub\n" +
+            "`logsChannel` — Salon de logs (membres, messages, vocal, rôles, serveur)",
         },
         {
           name: "📖 Exemple complet",

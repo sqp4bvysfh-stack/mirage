@@ -3,6 +3,7 @@ import { Client, GatewayIntentBits, Partials, Collection, Events } from "discord
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
 import { getConfig } from "./utils/serverConfig.js";
+import { registerLogs } from "./utils/logs.js";
 
 // ─── COMMANDS ─────────────────────────────────────────────
 import { pingCommand } from "./commands/ping.js";
@@ -181,6 +182,9 @@ createServer((req, res) => {
 }).listen(PORT, () => {
   console.log(`🌐 HTTP server listening on port ${PORT}`);
 });
+
+// ─── LOGS ────────────────────────────────────────────────
+registerLogs(client);
 
 // ─── READY ───────────────────────────────────────────────
 client.once(Events.ClientReady, (c) => {

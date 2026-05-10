@@ -18,7 +18,8 @@ export type ConfigKey =
   | "abuseRole"         // Rôle gestion abus (tickets signalement)
   | "modoRole"          // Rôle modérateur
   | "ownerUser"         // ID user de l'owner (tickets owner)
-  | "antiPubRole";      // Rôle à mentionner dans l'anti-pub
+  | "antiPubRole"       // Rôle à mentionner dans l'anti-pub
+  | "logsChannel";      // Salon de logs
 
 export type GuildConfig = Partial<Record<ConfigKey, string>>;
 
@@ -38,6 +39,7 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
   modoRole:          "🛡️ Rôle modérateur",
   ownerUser:         "👑 ID de l'owner (tickets)",
   antiPubRole:       "🚫 Rôle à mentionner anti-pub",
+  logsChannel:       "📋 Salon de logs",
 };
 
 // ─── Stockage ─────────────────────────────────────────────────────────────
