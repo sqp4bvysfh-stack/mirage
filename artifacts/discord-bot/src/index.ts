@@ -44,6 +44,7 @@ import { userinfoCommand } from "./commands/userinfo.js";
 import { statsCommand, incrementMessages } from "./commands/stats.js";
 import { dmCommand } from "./commands/dm.js";
 import { serverprofileCommand } from "./commands/serverprofile.js";
+import { botprofilCommand } from "./commands/botprofil.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
