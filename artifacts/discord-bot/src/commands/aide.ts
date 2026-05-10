@@ -98,6 +98,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .addFields(
         { name: "`*ping`",              value: "Affiche la latence du bot." },
         { name: "`*info`",              value: "Infos du serveur." },
+        { name: "`*serverprofile`",     value: "Profil visuel du serveur — icône & bannière GIF si disponibles." },
         { name: "`*stats`",             value: "Stats du serveur : membres, boosts, messages, gens en vocal." },
         { name: "`*userinfo [@membre]`", value: "Infos détaillées d'un membre (compte, rôles, badges, banner)." },
         { name: "`*aide`",              value: "Ce panneau d'aide." },
