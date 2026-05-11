@@ -74,20 +74,6 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       ),
   },
 
-  ia: {
-    emoji: "🤖",
-    label: "IA",
-    embed: new EmbedBuilder()
-      .setColor(0x9b59b6)
-      .setTitle("🤖 IA")
-      .setDescription("Parle avec l'IA du serveur — elle répond comme une vraie personne.\nSon nom se configure via `*config set botName <nom>`.")
-      .addFields(
-        { name: "`*ia [message]`",            value: "Pose une question à l'IA." },
-        { name: "`@bot [message]`",           value: "Mentionne le bot directement dans n'importe quel salon." },
-        { name: "🎭 Personnalité",            value: "Directe, naturelle, 1-2 phrases max comme dans un vrai Discord." },
-        { name: "🛡️ Modos",                  value: "Les modérateurs peuvent lui demander des actions de modération." },
-      ),
-  },
 
   utilitaires: {
     emoji: "ℹ️",
@@ -206,7 +192,6 @@ function makePanelEmbed() {
       { name: "🎮 Jeux",        value: "Loup-Garou, Undercover, Quiz…",          inline: true },
       { name: "🛡️ Modération",  value: "Ban, kick, mute, warn…",                  inline: true },
       { name: "🛠️ Outils",      value: "Tickets, giveaway, poll, confess…",       inline: true },
-      { name: "🤖 IA",          value: "Parler avec l'IA du serveur.",             inline: true },
       { name: "ℹ️ Utilitaires", value: "Ping, info, say…",                         inline: true },
       { name: "⚙️ Config bot",  value: "Configurer le bot pour ce serveur.",       inline: true },
     )
@@ -218,7 +203,6 @@ function makePanelRows() {
     new ButtonBuilder().setCustomId("aide_cat_jeux").setLabel("🎮 Jeux").setStyle(ButtonStyle.Success),
     new ButtonBuilder().setCustomId("aide_cat_moderation").setLabel("🛡️ Modération").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("aide_cat_outils").setLabel("🛠️ Outils").setStyle(ButtonStyle.Primary),
-    new ButtonBuilder().setCustomId("aide_cat_ia").setLabel("🤖 IA").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("aide_cat_utilitaires").setLabel("ℹ️ Utilitaires").setStyle(ButtonStyle.Secondary),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(

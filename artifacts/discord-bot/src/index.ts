@@ -26,7 +26,6 @@ import { twerkCommand } from "./commands/twerk.js";
 import { sendCommand } from "./commands/send.js";
 import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
-import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
 import { originesCommand, originesPanels } from "./commands/origines.js";
@@ -80,7 +79,6 @@ for (const cmd of [
   sendCommand,
   unmuteCommand,
   unbanCommand,
-  // iaCommand, // DÉSACTIVÉE
   confessionCommand,
   clearCommand,
   lockCommand,
