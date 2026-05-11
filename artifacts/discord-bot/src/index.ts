@@ -80,7 +80,7 @@ for (const cmd of [
   sendCommand,
   unmuteCommand,
   unbanCommand,
-  iaCommand,
+  // iaCommand, // DÉSACTIVÉE
   confessionCommand,
   clearCommand,
   lockCommand,
@@ -285,19 +285,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
     }
   }
 
-  // ── IA mention ────────────────────────────────────────────────────────────
-  if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) {
-    const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
-    if (texte) {
-      const isMod =
-        message.member?.permissions.has("ManageMessages") ||
-        message.member?.permissions.has("Administrator");
-      await message.channel.sendTyping();
-      const reply = await repondreIA(texte, isMod ?? false, message.channelId, message.guildId ?? undefined);
-      await message.reply(reply);
-    }
-    return;
-  }
+  // ── IA mention — DÉSACTIVÉE ───────────────────────────────────────────────
+  // if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) { ... }
 
   if (!message.content.startsWith(PREFIX)) return;
 
