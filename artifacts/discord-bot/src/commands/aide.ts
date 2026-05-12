@@ -75,6 +75,20 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
   },
 
 
+  ia: {
+    emoji: "🤖",
+    label: "IA",
+    embed: new EmbedBuilder()
+      .setColor(0x9b59b6)
+      .setTitle("🤖 IA")
+      .setDescription("Parle avec l'IA du serveur — elle répond comme une vraie personne.\nSon nom se configure via `*config set botName <nom>`.")
+      .addFields(
+        { name: "`*ia [message]`",            value: "Pose une question à l'IA." },
+        { name: "`@bot [message]`",           value: "Mentionne le bot directement dans n'importe quel salon." },
+        { name: "🎭 Personnalité",            value: "Directe, naturelle, à gauche, fan de Marvel et de rap français." },
+      ),
+  },
+
   utilitaires: {
     emoji: "ℹ️",
     label: "Utilitaires",
@@ -206,6 +220,7 @@ function makePanelRows() {
     new ButtonBuilder().setCustomId("aide_cat_utilitaires").setLabel("ℹ️ Utilitaires").setStyle(ButtonStyle.Secondary),
   );
   const row2 = new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder().setCustomId("aide_cat_ia").setLabel("🤖 IA").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("aide_cat_config").setLabel("⚙️ Config bot").setStyle(ButtonStyle.Secondary),
     new ButtonBuilder().setCustomId("aide_cat_owner").setLabel("👑 Owner").setStyle(ButtonStyle.Secondary),
   );

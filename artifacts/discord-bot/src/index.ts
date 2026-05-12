@@ -26,6 +26,7 @@ import { twerkCommand } from "./commands/twerk.js";
 import { sendCommand } from "./commands/send.js";
 import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
+import { iaCommand, repondreIA } from "./commands/ia.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
 import { originesCommand, originesPanels } from "./commands/origines.js";
@@ -79,6 +80,7 @@ for (const cmd of [
   sendCommand,
   unmuteCommand,
   unbanCommand,
+  iaCommand,
   confessionCommand,
   clearCommand,
   lockCommand,
@@ -283,8 +285,17 @@ client.on(Events.MessageCreate, async (message: Message) => {
     }
   }
 
-  // ── IA mention — DÉSACTIVÉE ───────────────────────────────────────────────
-  // if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) { ... }
+  // ── IA mention ────────────────────────────────────────────────────────────
+  if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) {
+    const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
+    if (texte) {
+      const isMod = message.member?.permissions.has("ManageMessages") || message.member?.permissions.has("Administrator");
+      await message.channel.sendTyping();
+      const reply = await repondreIA(texte, isMod ?? false, message.channelId, message.guildId ?? undefined);
+      await message.reply(reply);
+    }
+    return;
+  }
 
   if (!message.content.startsWith(PREFIX)) return;
 
