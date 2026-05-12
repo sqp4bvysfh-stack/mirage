@@ -20,7 +20,6 @@ export const braquerCommand: Command = {
     const wait = cooldownLeft(u.lastJob, JOB_CD);
     if (wait) { await message.reply(`⏱ Prochaine action dans **${wait}**.`); return; }
 
-    // ── Braquage TEAM ────────────────────────────────────────────────────────
     if (args[0]?.toLowerCase() === "team") {
       const teamName = args.slice(1).join(" ");
       if (!teamName) { await message.reply("❌ Donne un nom d'équipe : `&braquer team <nom>`"); return; }
@@ -35,7 +34,6 @@ export const braquerCommand: Command = {
         return;
       }
       if (team.coffre <= 0) { await message.reply("❌ Le coffre de l'équipe est vide."); return; }
-      // 40% réussite
       u.lastJob = Date.now();
       if (Math.random() < 0.40) {
         const pct  = rand(15, 35);
@@ -43,7 +41,7 @@ export const braquerCommand: Command = {
         u.poche += gain;
         u.totalEarned += gain;
         team.coffre -= gain;
-        team.cadenas = Array(team.cadenas.length).fill(true); // cadenas réparés
+        team.cadenas = Array(team.cadenas.length).fill(true);
         team.lastRepair = Date.now();
         saveUser(guildId, userId, u);
         saveTeam(guildId, team);
@@ -57,7 +55,6 @@ export const braquerCommand: Command = {
       return;
     }
 
-    // ── Braquage JOUEUR ──────────────────────────────────────────────────────
     const target = message.mentions.users.first();
     if (!target) { await message.reply("❌ Usage : `&braquer @membre` ou `&braquer team <nom>`"); return; }
     if (target.id === userId) { await message.reply("❌ T'as pas besoin de te braquer toi-même."); return; }
@@ -174,8 +171,8 @@ export const casserCommand: Command = {
 
 // ─── &juger ──────────────────────────────────────────────────────────────────
 
-const JUGER_CD   = 6 * 3600_000;
-const jugerLast  = new Map<string, Map<string, number>>();
+const JUGER_CD  = 6 * 3600_000;
+const jugerLast = new Map<string, Map<string, number>>();
 
 export const jugerCommand: Command = {
   name: "juger",
@@ -206,5 +203,53 @@ export const jugerCommand: Command = {
     saveUser(guildId, userId, u);
     gMap.set(key, Date.now());
     await message.reply(`⚖️ Verdict rendu ! ${target} perd son métier de **${ancienMetier}**.`);
+  },
+};
+
+// ─── &rob ─────────────────────────────────────────────────────────────────────
+
+const ROB_CD = 3 * 3600_000;
+
+export const robCommand: Command = {
+  name: "rob",
+  description: "Voler de l'argent dans la poche de quelqu'un",
+  usage: "&rob @membre",
+  execute: async (message, args) => {
+    const guildId = message.guild!.id;
+    const userId  = message.author.id;
+    const cfg     = getEcoConfig(guildId);
+    const u       = getUser(guildId, userId);
+
+    const wait = cooldownLeft(u.lastJob, ROB_CD);
+    if (wait) { await message.reply(`⏱ Prochaine tentative dans **${wait}**.`); return; }
+
+    const target = message.mentions.users.first();
+    if (!target) { await message.reply("❌ Usage : `&rob @membre`"); return; }
+    if (target.id === userId) { await message.reply("❌ Tu peux pas te rob toi-même."); return; }
+
+    const victim = getUser(guildId, target.id);
+    if (victim.poche <= 0) { await message.reply(`❌ ${target} n'a rien en poche.`); return; }
+
+    const now = Date.now();
+    const protégé = (victim.buffs.antirob && victim.buffs.antirob > now) || (victim.buffs.blindage && victim.buffs.blindage > now);
+    if (protégé) { await message.reply(`🛡️ ${target} est protégé(e) — impossible de le rob maintenant.`); return; }
+
+    u.lastJob = Date.now();
+
+    if (Math.random() < 0.45) {
+      const pct  = rand(5, 20);
+      const gain = Math.floor(victim.poche * pct / 100);
+      u.poche += gain;
+      u.totalEarned += gain;
+      victim.poche -= gain;
+      saveUser(guildId, userId, u);
+      saveUser(guildId, target.id, victim);
+      await message.reply(`🦝 Rob réussi sur ${target} ! Tu voles **${pct}%** de sa poche → ${fmt(gain, cfg.monnaie)}.`);
+    } else {
+      const pénalité = Math.floor(u.poche * 0.05);
+      u.poche = Math.max(0, u.poche - pénalité);
+      saveUser(guildId, userId, u);
+      await message.reply(`❌ Rob raté — tu te fais attraper et perds ${fmt(pénalité, cfg.monnaie)}.`);
+    }
   },
 };

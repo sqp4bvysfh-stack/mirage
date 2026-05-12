@@ -54,7 +54,7 @@ import {
   depCommand, depositCommand, withCommand, withdrawCommand,
   repCommand, metierCommand, topCommand, ecoHelpCommand,
 } from "./commands/economy.js";
-import { braquerCommand, cambriolerCommand, casserCommand, jugerCommand } from "./commands/jobs.js";
+import { braquerCommand, cambriolerCommand, casserCommand, jugerCommand, robCommand } from "./commands/jobs.js";
 import { teamCommand } from "./commands/team.js";
 import { livretCommand } from "./commands/livret.js";
 import { tycoonCommand } from "./commands/tycoon.js";
@@ -82,7 +82,7 @@ for (const cmd of [
   soldeCommand, dailyCommand, workCommand, payCommand,
   depCommand, depositCommand, withCommand, withdrawCommand,
   repCommand, metierCommand, topCommand, ecoHelpCommand,
-  braquerCommand, cambriolerCommand, casserCommand, jugerCommand,
+  braquerCommand, cambriolerCommand, casserCommand, jugerCommand, robCommand,
   teamCommand, livretCommand, tycoonCommand, cryptoCommand,
   rouletteCommand, blackjackCommand, bjCommand, shopCommand,
   ecoconfigCommand, coinsetupCommand,
@@ -293,8 +293,8 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 });
 
 // ─── MESSAGES ────────────────────────────────────────────
-const LIENS_AUTORISES    = new Set(["mrag"]);
-const INVITE_REGEX       = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
+const LIENS_AUTORISES       = new Set(["mrag"]);
+const INVITE_REGEX          = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
 const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
 
 client.on(Events.MessageCreate, async (message: Message) => {
