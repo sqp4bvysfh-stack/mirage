@@ -208,7 +208,7 @@ export const jugerCommand: Command = {
 
 // ─── &rob ─────────────────────────────────────────────────────────────────────
 
-const ROB_CD = 3 * 3600_000;
+const ROB_CD = 5 * 60_000;
 
 export const robCommand: Command = {
   name: "rob",
