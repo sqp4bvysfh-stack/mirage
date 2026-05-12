@@ -59,7 +59,7 @@ import { teamCommand } from "./commands/team.js";
 import { livretCommand } from "./commands/livret.js";
 import { tycoonCommand } from "./commands/tycoon.js";
 import { cryptoCommand } from "./commands/crypto.js";
-import { rouletteCommand, blackjackCommand } from "./commands/casino.js";
+import { rouletteCommand, blackjackCommand, bjCommand } from "./commands/casino.js";
 import { shopCommand } from "./commands/shop.js";
 import { ecoconfigCommand } from "./commands/ecoconfig.js";
 import { coinsetupCommand, getCoinSetup } from "./commands/coinsetup.js";
@@ -75,17 +75,16 @@ export const PREFIX     = "*";
 export const ECO_PREFIX = "&";
 
 // ─── COMMAND COLLECTION ───────────────────────────────────
-const commands = new Collection<string, Command>();
-
-// ─── ÉCONOMIE COLLECTION ──────────────────────────────────
+const commands    = new Collection<string, Command>();
 const ecoCommands = new Collection<string, Command>();
+
 for (const cmd of [
   soldeCommand, dailyCommand, workCommand, payCommand,
   depCommand, depositCommand, withCommand, withdrawCommand,
   repCommand, metierCommand, topCommand, ecoHelpCommand,
   braquerCommand, cambriolerCommand, casserCommand, jugerCommand,
   teamCommand, livretCommand, tycoonCommand, cryptoCommand,
-  rouletteCommand, blackjackCommand, shopCommand,
+  rouletteCommand, blackjackCommand, bjCommand, shopCommand,
   ecoconfigCommand, coinsetupCommand,
 ]) {
   ecoCommands.set(cmd.name, cmd);
@@ -167,8 +166,8 @@ const client = new Client({
 // ─── ANTI RAID ────────────────────────────────────────────
 const RAID_THRESHOLD = 5;
 const RAID_WINDOW_MS = 10_000;
-const joinTracker = new Map<string, { time: number; memberId: string }[]>();
-const raidMode    = new Set<string>();
+const joinTracker    = new Map<string, { time: number; memberId: string }[]>();
+const raidMode       = new Set<string>();
 
 client.on(Events.GuildMemberAdd, async (member) => {
   const guildId = member.guild.id;
@@ -211,7 +210,7 @@ client.on(Events.GuildMemberAdd, async (member) => {
   if (salon?.isTextBased()) salon.send(`👋 Bienvenue ${member}`).catch(() => {});
 });
 
-// ─── HTTP SERVER (Railway health check) ──────────────────
+// ─── HTTP SERVER ──────────────────────────────────────────
 const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 createServer((req, res) => {
@@ -247,7 +246,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
   }
 });
 
-// ─── BOOST — détection ───────────────────────────────────
+// ─── BOOST ───────────────────────────────────────────────
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   try {
     await handleBoostMember(oldMember as import("discord.js").GuildMember, newMember);
@@ -260,7 +259,6 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
 
-  // ── Coinsetup — attribution du rôle coins ──────────────────────────────────
   const guildId = reaction.message.guildId;
   if (guildId && reaction.emoji.name === "✅") {
     const setup = getCoinSetup(guildId);
@@ -295,15 +293,15 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 });
 
 // ─── MESSAGES ────────────────────────────────────────────
-const LIENS_AUTORISES = new Set(["mrag"]);
-const INVITE_REGEX    = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
+const LIENS_AUTORISES    = new Set(["mrag"]);
+const INVITE_REGEX       = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
 const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
 
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
   if (message.guild) incrementMessages(message.guild.id);
 
-  // ── ANTI LIEN ─────────────────────────────────────────────────────────────
+  // ── ANTI LIEN ────────────────────────────────────────────────────────────
   const isModoAntiLink =
     message.member?.permissions.has("ManageMessages") ||
     message.member?.permissions.has("Administrator");
@@ -331,7 +329,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
     }
   }
 
-  // ── IA mention ────────────────────────────────────────────────────────────
+  // ── IA mention ───────────────────────────────────────────────────────────
   if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) {
     if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
     const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
@@ -344,10 +342,10 @@ client.on(Events.MessageCreate, async (message: Message) => {
     return;
   }
 
-  // ── Préfixe économique & ──────────────────────────────────────────────────
+  // ── Préfixe économique & ─────────────────────────────────────────────────
   if (message.content.startsWith(ECO_PREFIX)) {
     if (!message.guild) return;
-    const ecoArgs = message.content.slice(ECO_PREFIX.length).trim().split(/\s+/);
+    const ecoArgs    = message.content.slice(ECO_PREFIX.length).trim().split(/\s+/);
     const ecoCmdName = ecoArgs.shift()?.toLowerCase();
     if (!ecoCmdName) return;
     const ecoCmd = ecoCommands.get(ecoCmdName);
