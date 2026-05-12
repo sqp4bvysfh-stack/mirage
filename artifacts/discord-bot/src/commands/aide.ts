@@ -83,9 +83,11 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .setTitle("🤖 IA")
       .setDescription("Parle avec l'IA du serveur — elle répond comme une vraie personne.\nSon nom se configure via `*config set botName <nom>`.")
       .addFields(
-        { name: "`*ia [message]`",            value: "Pose une question à l'IA." },
-        { name: "`@bot [message]`",           value: "Mentionne le bot directement dans n'importe quel salon." },
-        { name: "🎭 Personnalité",            value: "Directe, naturelle, à gauche, fan de Marvel et de rap français." },
+        { name: "`*ia [message]`",                          value: "Pose une question à l'IA." },
+        { name: "`@bot [message]`",                         value: "Mentionne le bot directement dans n'importe quel salon." },
+        { name: "`*iablock add/remove #salon`",             value: "Empêche l'IA de répondre dans un salon spécifique (modo)." },
+        { name: "`*iablock liste`",                         value: "Voir tous les salons bloqués." },
+        { name: "🎭 Personnalité",                          value: "Directe, naturelle, à gauche, fan de Marvel et de rap français." },
       ),
   },
 

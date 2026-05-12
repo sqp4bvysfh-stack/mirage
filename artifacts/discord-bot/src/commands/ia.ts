@@ -1,6 +1,7 @@
 import Groq from "groq-sdk";
 import type { Command } from "../types.js";
 import { getConfig } from "../utils/serverConfig.js";
+import { isIaBlocked } from "../utils/iaBlock.js";
 
 const groq = new Groq({ apiKey: process.env.GROQ_API_KEY });
 
@@ -87,6 +88,7 @@ export const iaCommand: Command = {
   description: "Parle avec le bot IA",
   usage:       "*ia [message]",
   execute: async (message, args) => {
+    if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
     const texte = args.join(" ");
     if (!texte) { await message.reply("dis ce que tu veux"); return; }
 

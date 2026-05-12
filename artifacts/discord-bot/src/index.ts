@@ -27,6 +27,8 @@ import { sendCommand } from "./commands/send.js";
 import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
 import { iaCommand, repondreIA } from "./commands/ia.js";
+import { iablockCommand } from "./commands/iablock.js";
+import { isIaBlocked } from "./utils/iaBlock.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
 import { originesCommand, originesPanels } from "./commands/origines.js";
@@ -112,6 +114,7 @@ for (const cmd of [
   unmuteCommand,
   unbanCommand,
   iaCommand,
+  iablockCommand,
   confessionCommand,
   clearCommand,
   lockCommand,
@@ -330,6 +333,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   // ── IA mention ────────────────────────────────────────────────────────────
   if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) {
+    if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
     const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
     if (texte) {
       const isMod = message.member?.permissions.has("ManageMessages") || message.member?.permissions.has("Administrator");
