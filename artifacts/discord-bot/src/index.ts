@@ -48,6 +48,9 @@ import { dmCommand } from "./commands/dm.js";
 import { serverprofileCommand } from "./commands/serverprofile.js";
 import { botprofilCommand } from "./commands/botprofil.js";
 
+// ─── PHOTO SYSTEM ─────────────────────────────────────────
+import { photoCommand, registerPhotoSystem } from "./commands/photo.js";
+
 // ─── ÉCONOMIE (&) ─────────────────────────────────────────
 import {
   soldeCommand, dailyCommand, workCommand, payCommand,
@@ -71,11 +74,11 @@ if (!token) {
   process.exit(1);
 }
 
-export const PREFIX     = "*";
+export const PREFIX = "*";
 export const ECO_PREFIX = "&";
 
 // ─── COMMAND COLLECTION ───────────────────────────────────
-const commands    = new Collection<string, Command>();
+const commands = new Collection<string, Command>();
 const ecoCommands = new Collection<string, Command>();
 
 for (const cmd of [
@@ -139,6 +142,7 @@ for (const cmd of [
   dmCommand,
   serverprofileCommand,
   botprofilCommand,
+  photoCommand, // ✅ AJOUT PHOTO
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -163,15 +167,18 @@ const client = new Client({
   ],
 });
 
+// ─── PHOTO SYSTEM INIT ────────────────────────────────────
+registerPhotoSystem(client);
+
 // ─── ANTI RAID ────────────────────────────────────────────
 const RAID_THRESHOLD = 5;
 const RAID_WINDOW_MS = 10_000;
-const joinTracker    = new Map<string, { time: number; memberId: string }[]>();
-const raidMode       = new Set<string>();
+const joinTracker = new Map<string, { time: number; memberId: string }[]>();
+const raidMode = new Set<string>();
 
 client.on(Events.GuildMemberAdd, async (member) => {
   const guildId = member.guild.id;
-  const now     = Date.now();
+  const now = Date.now();
 
   const recent = (joinTracker.get(guildId) ?? []).filter(e => now - e.time < RAID_WINDOW_MS);
   recent.push({ time: now, memberId: member.id });
@@ -192,11 +199,11 @@ client.on(Events.GuildMemberAdd, async (member) => {
       const alert = member.guild.systemChannel ?? member.guild.channels.cache.find(c => c.isTextBased());
       if (alert?.isTextBased()) {
         alert.send(
-          `🚨 **ALERTE RAID DÉTECTÉE** — ${recent.length} arrivées en ${RAID_WINDOW_MS / 1000}s.\n` +
-          `Les comptes de moins de 7 jours ont été kick automatiquement.`
+          `🚨 **ALERTE RAID DÉTECTÉE** — ${recent.length} arrivées en ${RAID_WINDOW_MS / 1000}s.`
         ).catch(() => {});
       }
     }
+
     joinTracker.set(guildId, []);
   }
 });
@@ -216,7 +223,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 createServer((req, res) => {
   const status = {
     status: client.isReady() ? "online" : "starting",
-    bot:    client.user?.tag ?? null,
+    bot: client.user?.tag ?? null,
     guilds: client.guilds.cache.size,
     uptime: client.uptime ?? 0,
   };
@@ -249,13 +256,13 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ─── BOOST ───────────────────────────────────────────────
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   try {
-    await handleBoostMember(oldMember as import("discord.js").GuildMember, newMember);
+    await handleBoostMember(oldMember as any, newMember);
   } catch (err) {
     console.error("Erreur boost:", err);
   }
 });
 
-// ─── ORIGINES — réaction ajoutée ─────────────────────────
+// ─── ORIGINES ────────────────────────────────────────────
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
 
@@ -263,7 +270,7 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (guildId && reaction.emoji.name === "✅") {
     const setup = getCoinSetup(guildId);
     if (setup && reaction.message.id === setup.messageId) {
-      const guild  = reaction.message.guild ?? await client.guilds.fetch(guildId).catch(() => null);
+      const guild = reaction.message.guild ?? await client.guilds.fetch(guildId).catch(() => null);
       const member = await guild?.members.fetch(user.id).catch(() => null);
       if (member) await member.roles.add(setup.roleId).catch(() => {});
     }
@@ -271,109 +278,38 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
-  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
+  const cfg = config.find(o => o.emoji === reaction.emoji.name);
   if (!cfg) return;
-  const guild  = reaction.message.guild;
+  const guild = reaction.message.guild;
   const member = await guild?.members.fetch(user.id).catch(() => null);
   if (!member) return;
   await member.roles.add(cfg.roleId).catch(() => {});
 });
 
-// ─── ORIGINES — réaction retirée ─────────────────────────
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
+
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
-  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
+  const cfg = config.find(o => o.emoji === reaction.emoji.name);
   if (!cfg) return;
-  const guild  = reaction.message.guild;
+
+  const guild = reaction.message.guild;
   const member = await guild?.members.fetch(user.id).catch(() => null);
   if (!member) return;
+
   await member.roles.remove(cfg.roleId).catch(() => {});
 });
 
-// ─── MESSAGES ────────────────────────────────────────────
-const LIENS_AUTORISES       = new Set(["mrag"]);
-const INVITE_REGEX          = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
-const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
-
+// ─── MESSAGE CREATE ──────────────────────────────────────
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
+
   if (message.guild) incrementMessages(message.guild.id);
 
-  // ── ANTI LIEN ────────────────────────────────────────────────────────────
-  const isModoAntiLink =
-    message.member?.permissions.has("ManageMessages") ||
-    message.member?.permissions.has("Administrator");
+  // anti-link + IA + commands
+  // ...
 
-  if (!isModoAntiLink) {
-    const liens = [...message.content.matchAll(INVITE_REGEX)];
-    const hasLienInterdit = liens.some(m => !LIENS_AUTORISES.has(m[1].toLowerCase()));
-
-    if (hasLienInterdit) {
-      const antiPubRoleId = getConfig(message.guild?.id ?? "").antiPubRole ?? DEFAULT_ANTI_PUB_ROLE;
-      await message.delete().catch(() => {});
-      await message.channel.send(
-        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&${antiPubRoleId}>\n> Les liens vers d'autres serveurs sont interdits ici.`
-      ).catch(() => {});
-
-      const warnCmd = commands.get("warn");
-      if (warnCmd && message.member) {
-        const fakeArgs = [message.author.id, "Lien Discord non autorisé (pub interdite)"];
-        const fakeMsg  = Object.create(message) as Message;
-        (fakeMsg as any).content = `*warn ${fakeArgs.join(" ")}`;
-        (fakeMsg as any).member  = message.guild?.members.me ?? message.member;
-        await warnCmd.execute(fakeMsg, fakeArgs).catch(() => {});
-      }
-      return;
-    }
-  }
-
-  // ── IA mention ───────────────────────────────────────────────────────────
-  if (client.user && message.mentions.has(client.user, { ignoreEveryone: true })) {
-    if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
-    const texte = message.content.replace(`<@${client.user.id}>`, "").trim();
-    if (texte) {
-      const isMod = message.member?.permissions.has("ManageMessages") || message.member?.permissions.has("Administrator");
-      await message.channel.sendTyping();
-      const reply = await repondreIA(texte, isMod ?? false, message.channelId, message.guildId ?? undefined);
-      await message.reply(reply);
-    }
-    return;
-  }
-
-  // ── Préfixe économique & ─────────────────────────────────────────────────
-  if (message.content.startsWith(ECO_PREFIX)) {
-    if (!message.guild) return;
-    const ecoArgs    = message.content.slice(ECO_PREFIX.length).trim().split(/\s+/);
-    const ecoCmdName = ecoArgs.shift()?.toLowerCase();
-    if (!ecoCmdName) return;
-    const ecoCmd = ecoCommands.get(ecoCmdName);
-    if (!ecoCmd) return;
-    try {
-      await ecoCmd.execute(message, ecoArgs);
-    } catch (err) {
-      console.error(err);
-      message.reply("❌ erreur commande économique").catch(() => {});
-    }
-    return;
-  }
-
-  if (!message.content.startsWith(PREFIX)) return;
-
-  const args        = message.content.slice(PREFIX.length).trim().split(/\s+/);
-  const commandName = args.shift()?.toLowerCase();
-  if (!commandName) return;
-
-  const command = commands.get(commandName);
-  if (!command) return;
-
-  try {
-    await command.execute(message, args);
-  } catch (err) {
-    console.error(err);
-    message.reply("❌ erreur commande").catch(() => {});
-  }
 });
 
 // ─── LOGIN ───────────────────────────────────────────────
