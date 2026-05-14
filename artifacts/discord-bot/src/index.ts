@@ -32,7 +32,7 @@ import { twerkCommand } from "./commands/twerk.js";
 import { sendCommand } from "./commands/send.js";
 import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
-import { iaCommand, repondreIA } from "./commands/ia.js";
+import { iaCommand, repondreIA, shouldTriggerIA } from "./commands/ia.js";
 import { iablockCommand } from "./commands/iablock.js";
 import { isIaBlocked } from "./utils/iaBlock.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
@@ -55,7 +55,11 @@ import { serverprofileCommand } from "./commands/serverprofile.js";
 import { botprofilCommand } from "./commands/botprofil.js";
 
 // ─── PHOTO SYSTEM ─────────────────────────────────────────
-import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
+import {
+  photoCommand,
+  handlePhotoSystem,
+  getPhotoEmoji,
+} from "./commands/photo.js";
 
 // ─── ÉCONOMIE ─────────────────────────────────────────────
 import {
@@ -89,9 +93,6 @@ import { rouletteCommand, blackjackCommand, bjCommand } from "./commands/casino.
 import { shopCommand } from "./commands/shop.js";
 import { ecoconfigCommand } from "./commands/ecoconfig.js";
 import { coinsetupCommand } from "./commands/coinsetup.js";
-
-// ─── IA IMPORT ────────────────────────────────────────────
-import { getConfig as getBotConfig } from "./utils/serverConfig.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -241,47 +242,23 @@ client.on(Events.MessageCreate, async (message: Message) => {
     return;
   }
 
-  // ── IA TRIGGER (@bot) ─────────────────────
-  if (client.user && message.mentions.has(client.user)) {
+  // ── IA SYSTEM (ONLY @bot OR reply bot) ─────────────────
+  const ia = await shouldTriggerIA(message, client);
+
+  if (ia.trigger) {
     if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
 
-    const texte = message.content
-      .replace(`<@${client.user.id}>`, "")
-      .trim();
+    await message.channel.sendTyping();
 
-    if (texte) {
-      await message.channel.sendTyping();
+    const reply = await repondreIA(
+      ia.text,
+      message.member?.permissions.has("ManageMessages") ?? false,
+      message.channelId,
+      message.guildId ?? undefined
+    );
 
-      const reply = await repondreIA(
-        texte,
-        message.member?.permissions.has("ManageMessages") ?? false,
-        message.channelId,
-        message.guildId ?? undefined
-      );
-
-      await message.reply(reply);
-    }
-
+    await message.reply(reply);
     return;
-  }
-
-  // ── IA TRIGGER (reply message) ─────────────────────
-  if (message.reference) {
-    const ref = await message.fetchReference().catch(() => null);
-    if (ref && !ref.author.bot) {
-
-      await message.channel.sendTyping();
-
-      const reply = await repondreIA(
-        ref.content,
-        message.member?.permissions.has("ManageMessages") ?? false,
-        message.channelId,
-        message.guildId ?? undefined
-      );
-
-      await message.reply(reply);
-      return;
-    }
   }
 
   // ── COMMANDES ──────────────────────────────────────────
