@@ -1,105 +1,74 @@
-import { Events, Message } from "discord.js";
+import { Message } from "discord.js";
 import type { Command } from "../types.js";
 
 const photoChannels = new Map<string, string>();
-
-const photoSetup = new Map<
-  string,
-  {
-    step: "channel" | "emoji";
-    channelId?: string;
-  }
->();
+const photoSetup = new Map<string, { step: "channel" | "emoji"; channelId?: string }>();
 
 export const photoCommand: Command = {
   name: "photo",
 
-  async execute(message) {
+  async execute(message: Message) {
 
     if (!message.member?.permissions.has("ManageChannels")) {
       return message.reply("❌ Tu n'as pas la permission.");
     }
 
-    photoSetup.set(message.author.id, {
-      step: "channel"
-    });
+    photoSetup.set(message.author.id, { step: "channel" });
 
     await message.reply(
-      "📸 Quel salon veux-tu mettre en mode photo ?\n" +
-      "Mentionne le salon (#salon)"
+      "📸 Mentionne le salon à mettre en mode photo :\n" +
+      "Exemple : #salon ou envoie l’ID du salon"
     );
   }
 };
 
-export function registerPhotoSystem(client: any) {
+// ─── HANDLER (À GARDER DANS TON INDEX MessageCreate) ───
+export function handlePhotoSystem(message: Message) {
 
-  client.on(Events.MessageCreate, async (message: Message) => {
+  if (message.author.bot) return;
 
-    if (message.author.bot) return;
+  const setup = photoSetup.get(message.author.id);
+  if (!setup) return;
 
-    // ── CONFIG PHOTO ─────────────────────
-    const setup = photoSetup.get(message.author.id);
+  // ── STEP 1 : salon ───────────────────────
+  if (setup.step === "channel") {
 
-    if (setup) {
+    const channelId =
+      message.mentions.channels.first()?.id ||
+      message.content.match(/\d{15,25}/)?.[0];
 
-      // Salon
-      if (setup.step === "channel") {
+    const channel =
+      message.guild?.channels.cache.get(channelId ?? "");
 
-        const channel = message.mentions.channels.first();
-
-        if (!channel) {
-          return message.reply("❌ Mentionne un salon valide.");
-        }
-
-        photoSetup.set(message.author.id, {
-          step: "emoji",
-          channelId: channel.id
-        });
-
-        return message.reply(
-          "😀 Quel emoji veux-tu mettre automatiquement ?"
-        );
-      }
-
-      // Emoji
-      if (setup.step === "emoji") {
-
-        const emoji = message.content.trim();
-
-        if (!setup.channelId) return;
-
-        photoChannels.set(setup.channelId, emoji);
-
-        photoSetup.delete(message.author.id);
-
-        return message.reply(
-          `✅ Salon configuré avec la réaction ${emoji}`
-        );
-      }
+    if (!channel || !channel.isTextBased()) {
+      return message.reply("❌ Mentionne un salon valide.");
     }
 
-    // ── MODE PHOTO ──────────────────────
-    const emoji = photoChannels.get(message.channel.id);
-
-    if (!emoji) return;
-
-    if (message.content.startsWith("*photo")) return;
-
-    const hasMedia = message.attachments.some(att => {
-      const type = att.contentType || "";
-
-      return (
-        type.startsWith("image/") ||
-        type.startsWith("video/")
-      );
+    photoSetup.set(message.author.id, {
+      step: "emoji",
+      channelId: channel.id,
     });
 
-    // Supprime tout sauf image/vidéo
-    if (!hasMedia) {
-      return message.delete().catch(() => {});
-    }
+    return message.reply("😀 Quel emoji veux-tu pour les réactions ?");
+  }
 
-    // Réaction auto
-    await message.react(emoji).catch(() => {});
-  });
+  // ── STEP 2 : emoji ───────────────────────
+  if (setup.step === "emoji") {
+
+    const emoji = message.content.trim();
+
+    if (!setup.channelId) return;
+
+    photoChannels.set(setup.channelId, emoji);
+    photoSetup.delete(message.author.id);
+
+    return message.reply(
+      `✅ Salon configuré en mode photo avec la réaction ${emoji}`
+    );
+  }
+}
+
+// ─── EXPORT DU MODE PHOTO ───────────────────────────────
+export function getPhotoEmoji(channelId: string) {
+  return photoChannels.get(channelId);
 }

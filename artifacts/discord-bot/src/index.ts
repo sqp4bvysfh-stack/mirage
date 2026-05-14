@@ -48,8 +48,8 @@ import { dmCommand } from "./commands/dm.js";
 import { serverprofileCommand } from "./commands/serverprofile.js";
 import { botprofilCommand } from "./commands/botprofil.js";
 
-// ─── PHOTO SYSTEM (SAFE) ─────────────────────────────────
-import { photoCommand } from "./commands/photo.js";
+// ─── PHOTO SYSTEM ─────────────────────────────────────────
+import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
 
 // ─── ÉCONOMIE ─────────────────────────────────────────────
 import {
@@ -65,11 +65,7 @@ import { cryptoCommand } from "./commands/crypto.js";
 import { rouletteCommand, blackjackCommand, bjCommand } from "./commands/casino.js";
 import { shopCommand } from "./commands/shop.js";
 import { ecoconfigCommand } from "./commands/ecoconfig.js";
-import { coinsetupCommand, getCoinSetup } from "./commands/coinsetup.js";
-
-// ─── PHOTO STATE ──────────────────────────────────────────
-const photoChannels = new Map<string, string>();
-const photoSetup = new Map<string, { step: "channel" | "emoji"; channelId?: string }>();
+import { coinsetupCommand } from "./commands/coinsetup.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -81,7 +77,7 @@ if (!token) {
 export const PREFIX = "*";
 export const ECO_PREFIX = "&";
 
-// ─── COMMAND COLLECTION ───────────────────────────────────
+// ─── COLLECTIONS ─────────────────────────────────────────
 const commands = new Collection<string, Command>();
 const ecoCommands = new Collection<string, Command>();
 
@@ -176,40 +172,18 @@ client.once(Events.ClientReady, (c) => {
   console.log(`✅ Bot en ligne : ${c.user.tag}`);
 });
 
-// ─── MESSAGE CREATE (UNIQUE CLEAN) ───────────────────────
+// ─── MESSAGE CREATE (FULL FIX) ───────────────────────────
 client.on(Events.MessageCreate, async (message: Message) => {
+
   if (message.author.bot) return;
 
   if (message.guild) incrementMessages(message.guild.id);
 
-  // ── PHOTO SYSTEM (SAFE INLINE) ─────────────────────────
-  const setup = photoSetup.get(message.author.id);
+  // ── PHOTO SETUP ───────────────────────────
+  handlePhotoSystem(message);
 
-  if (setup) {
-    if (setup.step === "channel") {
-      const channel = message.mentions.channels.first();
-      if (!channel) return message.reply("❌ Mentionne un salon valide.");
-
-      photoSetup.set(message.author.id, {
-        step: "emoji",
-        channelId: channel.id,
-      });
-
-      return message.reply("😀 Quel emoji pour les réactions ?");
-    }
-
-    if (setup.step === "emoji") {
-      const emoji = message.content.trim();
-      if (!setup.channelId) return;
-
-      photoChannels.set(setup.channelId, emoji);
-      photoSetup.delete(message.author.id);
-
-      return message.reply(`✅ Salon photo configuré avec ${emoji}`);
-    }
-  }
-
-  const emoji = photoChannels.get(message.channel.id);
+  // ── PHOTO MODE ────────────────────────────
+  const emoji = getPhotoEmoji(message.channel.id);
 
   if (emoji) {
     const hasMedia = message.attachments.some(att =>
@@ -219,9 +193,10 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
     if (!hasMedia) return message.delete().catch(() => {});
     await message.react(emoji).catch(() => {});
+    return;
   }
 
-  // ── COMMANDES ──────────────────────────────────────────
+  // ── COMMANDES ─────────────────────────────
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
@@ -233,8 +208,8 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   try {
     await cmd.execute(message, args);
-  } catch (e) {
-    console.error(e);
+  } catch (err) {
+    console.error(err);
     message.reply("❌ erreur commande").catch(() => {});
   }
 });
