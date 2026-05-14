@@ -1,5 +1,11 @@
 import { createServer } from "node:http";
-import { Client, GatewayIntentBits, Partials, Collection, Events } from "discord.js";
+import {
+  Client,
+  GatewayIntentBits,
+  Partials,
+  Collection,
+  Events,
+} from "discord.js";
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
 import { getConfig } from "./utils/serverConfig.js";
@@ -53,11 +59,28 @@ import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo
 
 // ─── ÉCONOMIE ─────────────────────────────────────────────
 import {
-  soldeCommand, dailyCommand, workCommand, payCommand,
-  depCommand, depositCommand, withCommand, withdrawCommand,
-  repCommand, metierCommand, topCommand, ecoHelpCommand,
+  soldeCommand,
+  dailyCommand,
+  workCommand,
+  payCommand,
+  depCommand,
+  depositCommand,
+  withCommand,
+  withdrawCommand,
+  repCommand,
+  metierCommand,
+  topCommand,
+  ecoHelpCommand,
 } from "./commands/economy.js";
-import { braquerCommand, cambriolerCommand, casserCommand, jugerCommand, robCommand } from "./commands/jobs.js";
+
+import {
+  braquerCommand,
+  cambriolerCommand,
+  casserCommand,
+  jugerCommand,
+  robCommand,
+} from "./commands/jobs.js";
+
 import { teamCommand } from "./commands/team.js";
 import { livretCommand } from "./commands/livret.js";
 import { tycoonCommand } from "./commands/tycoon.js";
@@ -66,6 +89,9 @@ import { rouletteCommand, blackjackCommand, bjCommand } from "./commands/casino.
 import { shopCommand } from "./commands/shop.js";
 import { ecoconfigCommand } from "./commands/ecoconfig.js";
 import { coinsetupCommand } from "./commands/coinsetup.js";
+
+// ─── IA IMPORT ────────────────────────────────────────────
+import { getConfig as getBotConfig } from "./utils/serverConfig.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -82,13 +108,33 @@ const commands = new Collection<string, Command>();
 const ecoCommands = new Collection<string, Command>();
 
 for (const cmd of [
-  soldeCommand, dailyCommand, workCommand, payCommand,
-  depCommand, depositCommand, withCommand, withdrawCommand,
-  repCommand, metierCommand, topCommand, ecoHelpCommand,
-  braquerCommand, cambriolerCommand, casserCommand, jugerCommand, robCommand,
-  teamCommand, livretCommand, tycoonCommand, cryptoCommand,
-  rouletteCommand, blackjackCommand, bjCommand, shopCommand,
-  ecoconfigCommand, coinsetupCommand,
+  soldeCommand,
+  dailyCommand,
+  workCommand,
+  payCommand,
+  depCommand,
+  depositCommand,
+  withCommand,
+  withdrawCommand,
+  repCommand,
+  metierCommand,
+  topCommand,
+  ecoHelpCommand,
+  braquerCommand,
+  cambriolerCommand,
+  casserCommand,
+  jugerCommand,
+  robCommand,
+  teamCommand,
+  livretCommand,
+  tycoonCommand,
+  cryptoCommand,
+  rouletteCommand,
+  blackjackCommand,
+  bjCommand,
+  shopCommand,
+  ecoconfigCommand,
+  coinsetupCommand,
 ]) ecoCommands.set(cmd.name, cmd);
 
 for (const cmd of [
@@ -172,17 +218,16 @@ client.once(Events.ClientReady, (c) => {
   console.log(`✅ Bot en ligne : ${c.user.tag}`);
 });
 
-// ─── MESSAGE CREATE (FULL FIX) ───────────────────────────
+// ─── MESSAGE CREATE ──────────────────────────────────────
 client.on(Events.MessageCreate, async (message: Message) => {
 
   if (message.author.bot) return;
 
   if (message.guild) incrementMessages(message.guild.id);
 
-  // ── PHOTO SETUP ───────────────────────────
+  // ── PHOTO SYSTEM ───────────────────────────
   handlePhotoSystem(message);
 
-  // ── PHOTO MODE ────────────────────────────
   const emoji = getPhotoEmoji(message.channel.id);
 
   if (emoji) {
@@ -196,7 +241,50 @@ client.on(Events.MessageCreate, async (message: Message) => {
     return;
   }
 
-  // ── COMMANDES ─────────────────────────────
+  // ── IA TRIGGER (@bot) ─────────────────────
+  if (client.user && message.mentions.has(client.user)) {
+    if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
+
+    const texte = message.content
+      .replace(`<@${client.user.id}>`, "")
+      .trim();
+
+    if (texte) {
+      await message.channel.sendTyping();
+
+      const reply = await repondreIA(
+        texte,
+        message.member?.permissions.has("ManageMessages") ?? false,
+        message.channelId,
+        message.guildId ?? undefined
+      );
+
+      await message.reply(reply);
+    }
+
+    return;
+  }
+
+  // ── IA TRIGGER (reply message) ─────────────────────
+  if (message.reference) {
+    const ref = await message.fetchReference().catch(() => null);
+    if (ref && !ref.author.bot) {
+
+      await message.channel.sendTyping();
+
+      const reply = await repondreIA(
+        ref.content,
+        message.member?.permissions.has("ManageMessages") ?? false,
+        message.channelId,
+        message.guildId ?? undefined
+      );
+
+      await message.reply(reply);
+      return;
+    }
+  }
+
+  // ── COMMANDES ──────────────────────────────────────────
   if (!message.content.startsWith(PREFIX)) return;
 
   const args = message.content.slice(PREFIX.length).trim().split(/\s+/);
