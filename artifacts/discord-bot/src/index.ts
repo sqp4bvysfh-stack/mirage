@@ -6,6 +6,7 @@ import {
   Collection,
   Events,
 } from "discord.js";
+
 import type { Message } from "discord.js";
 import type { Command } from "./types.js";
 
@@ -33,56 +34,124 @@ import { twerkCommand } from "./commands/twerk.js";
 import { sendCommand } from "./commands/send.js";
 import { unmuteCommand } from "./commands/unmute.js";
 import { unbanCommand } from "./commands/unban.js";
-import { iaCommand, repondreIA, shouldTriggerIA } from "./commands/ia.js";
+
+import {
+  iaCommand,
+  repondreIA,
+  shouldTriggerIA,
+} from "./commands/ia.js";
+
 import { iablockCommand } from "./commands/iablock.js";
 import { isIaBlocked } from "./utils/iaBlock.js";
 
 import { confessionCommand } from "./commands/confession.js";
 import { ticketCommand } from "./commands/ticket.js";
 import { originesCommand } from "./commands/origines.js";
-import { handleAideInteraction } from "./commands/aide.js";
+
 import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
-import { giveawayCommand, rerollCommand, topGiveawayCommand } from "./commands/giveaway.js";
+
+import {
+  giveawayCommand,
+  rerollCommand,
+  topGiveawayCommand,
+} from "./commands/giveaway.js";
+
 import { pollCommand } from "./commands/poll.js";
-import { boostSetupCommand, handleBoostMember, handleBoostInteraction } from "./commands/boost.js";
+
+import {
+  boostSetupCommand,
+  handleBoostMember,
+  handleBoostInteraction,
+} from "./commands/boost.js";
+
 import { talkCommand } from "./commands/talk.js";
-import { fermetureCommand, ouvertureCommand } from "./commands/fermeture.js";
+
+import {
+  fermetureCommand,
+  ouvertureCommand,
+} from "./commands/fermeture.js";
+
 import { configCommand } from "./commands/config.js";
-import { massbanCommand, delsalonCommand, broadcastCommand, masskickCommand, parleCommand } from "./commands/owner.js";
+
+import {
+  massbanCommand,
+  delsalonCommand,
+  broadcastCommand,
+  masskickCommand,
+  parleCommand,
+} from "./commands/owner.js";
+
 import { userinfoCommand } from "./commands/userinfo.js";
-import { statsCommand, incrementMessages } from "./commands/stats.js";
+
+import {
+  statsCommand,
+  incrementMessages,
+} from "./commands/stats.js";
+
 import { dmCommand } from "./commands/dm.js";
+
 import { serverprofileCommand } from "./commands/serverprofile.js";
 import { botprofilCommand } from "./commands/botprofil.js";
 
-// ─── PHOTO SYSTEM ─────────────────────────────────────────
-import { handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
+// ─── JAIL ────────────────────────────────────────────────
+import {
+  jailCommand,
+  unjailCommand,
+} from "./commands/jail.js";
+
+// ─── PHOTO ───────────────────────────────────────────────
+import {
+  handlePhotoSystem,
+  getPhotoEmoji,
+} from "./commands/photo.js";
 
 // ─── ECONOMY ─────────────────────────────────────────────
 import {
-  soldeCommand, dailyCommand, workCommand, payCommand,
-  depCommand, depositCommand, withCommand, withdrawCommand,
-  repCommand, metierCommand, topCommand, ecoHelpCommand,
+  soldeCommand,
+  dailyCommand,
+  workCommand,
+  payCommand,
+  depCommand,
+  depositCommand,
+  withCommand,
+  withdrawCommand,
+  repCommand,
+  metierCommand,
+  topCommand,
+  ecoHelpCommand,
 } from "./commands/economy.js";
 
 import {
-  braquerCommand, cambriolerCommand, casserCommand,
-  jugerCommand, robCommand,
+  braquerCommand,
+  cambriolerCommand,
+  casserCommand,
+  jugerCommand,
+  robCommand,
 } from "./commands/jobs.js";
 
 import { teamCommand } from "./commands/team.js";
 import { livretCommand } from "./commands/livret.js";
 import { tycoonCommand } from "./commands/tycoon.js";
 import { cryptoCommand } from "./commands/crypto.js";
-import { rouletteCommand, blackjackCommand, bjCommand } from "./commands/casino.js";
+
+import {
+  rouletteCommand,
+  blackjackCommand,
+  bjCommand,
+} from "./commands/casino.js";
+
 import { shopCommand } from "./commands/shop.js";
 import { ecoconfigCommand } from "./commands/ecoconfig.js";
 import { coinsetupCommand } from "./commands/coinsetup.js";
 
-// ─── PREFIX ───────────────────────────────────────────────
+// ─── TOKEN ───────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
-if (!token) process.exit(1);
+
+if (!token) {
+  console.error("❌ DISCORD_BOT_TOKEN manquant");
+  process.exit(1);
+}
 
 export const PREFIX = "*";
 export const ECO_PREFIX = "&";
@@ -91,40 +160,124 @@ export const ECO_PREFIX = "&";
 const commands = new Collection<string, Command>();
 const ecoCommands = new Collection<string, Command>();
 
+// ─── ECO COMMANDS ────────────────────────────────────────
 for (const cmd of [
-  soldeCommand, dailyCommand, workCommand, payCommand,
-  depCommand, depositCommand, withCommand, withdrawCommand,
-  repCommand, metierCommand, topCommand, ecoHelpCommand,
-  braquerCommand, cambriolerCommand, casserCommand,
-  jugerCommand, robCommand,
-  teamCommand, livretCommand, tycoonCommand, cryptoCommand,
-  rouletteCommand, blackjackCommand, bjCommand,
-  shopCommand, ecoconfigCommand, coinsetupCommand,
-]) ecoCommands.set(cmd.name, cmd);
+  soldeCommand,
+  dailyCommand,
+  workCommand,
+  payCommand,
+  depCommand,
+  depositCommand,
+  withCommand,
+  withdrawCommand,
+  repCommand,
+  metierCommand,
+  topCommand,
+  ecoHelpCommand,
 
+  braquerCommand,
+  cambriolerCommand,
+  casserCommand,
+  jugerCommand,
+  robCommand,
+
+  teamCommand,
+  livretCommand,
+  tycoonCommand,
+  cryptoCommand,
+
+  rouletteCommand,
+  blackjackCommand,
+  bjCommand,
+
+  shopCommand,
+  ecoconfigCommand,
+  coinsetupCommand,
+]) {
+  ecoCommands.set(cmd.name, cmd);
+}
+
+// ─── NORMAL COMMANDS ─────────────────────────────────────
 for (const cmd of [
-  pingCommand, aideCommand, infoCommand,
-  loupgarouCommand, finpartieCommand,
-  rolesCommand, roleaddCommand, roleremoveCommand,
-  sayCommand, banCommand, tempbanCommand, muteCommand,
-  kickCommand, warnCommand, quizCommand,
-  undercoverCommand, telephoneCommand, twerkCommand,
-  sendCommand, unmuteCommand, unbanCommand,
-  iaCommand, iablockCommand,
-  confessionCommand, clearCommand,
-  lockCommand, unlockCommand,
-  giveawayCommand, rerollCommand, topGiveawayCommand,
-  pollCommand, ticketCommand, originesCommand,
-  boostSetupCommand, talkCommand,
-  fermetureCommand, ouvertureCommand,
+  pingCommand,
+  aideCommand,
+  infoCommand,
+
+  loupgarouCommand,
+  finpartieCommand,
+
+  rolesCommand,
+  roleaddCommand,
+  roleremoveCommand,
+
+  sayCommand,
+
+  banCommand,
+  tempbanCommand,
+  muteCommand,
+  kickCommand,
+  warnCommand,
+
+  quizCommand,
+  undercoverCommand,
+  telephoneCommand,
+  twerkCommand,
+
+  sendCommand,
+
+  unmuteCommand,
+  unbanCommand,
+
+  iaCommand,
+  iablockCommand,
+
+  confessionCommand,
+
+  clearCommand,
+
+  lockCommand,
+  unlockCommand,
+
+  giveawayCommand,
+  rerollCommand,
+  topGiveawayCommand,
+
+  pollCommand,
+
+  ticketCommand,
+
+  originesCommand,
+
+  boostSetupCommand,
+
+  talkCommand,
+
+  fermetureCommand,
+  ouvertureCommand,
+
   configCommand,
-  massbanCommand, delsalonCommand, broadcastCommand,
-  masskickCommand, parleCommand,
-  userinfoCommand, statsCommand, dmCommand,
-  serverprofileCommand, botprofilCommand,
-]) commands.set(cmd.name, cmd);
 
-// ─── CLIENT ───────────────────────────────────────────────
+  massbanCommand,
+  delsalonCommand,
+  broadcastCommand,
+  masskickCommand,
+  parleCommand,
+
+  userinfoCommand,
+  statsCommand,
+
+  dmCommand,
+
+  serverprofileCommand,
+  botprofilCommand,
+
+  jailCommand,
+  unjailCommand,
+]) {
+  commands.set(cmd.name, cmd);
+}
+
+// ─── CLIENT ──────────────────────────────────────────────
 const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
@@ -135,6 +288,7 @@ const client = new Client({
     GatewayIntentBits.GuildMessageReactions,
     GatewayIntentBits.GuildVoiceStates,
   ],
+
   partials: [
     Partials.Message,
     Partials.Channel,
@@ -151,49 +305,101 @@ client.once(Events.ClientReady, (c) => {
   console.log(`✅ Bot en ligne : ${c.user.tag}`);
 });
 
+// ─── BOOST ───────────────────────────────────────────────
+client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  try {
+    await handleBoostMember(
+      oldMember as any,
+      newMember
+    );
+  } catch (err) {
+    console.error("Erreur boost:", err);
+  }
+});
+
+// ─── INTERACTIONS ────────────────────────────────────────
+client.on(Events.InteractionCreate, async (interaction) => {
+  try {
+    await handleBoostInteraction(interaction);
+  } catch (err) {
+    console.error(err);
+  }
+});
+
 // ─── MESSAGE CREATE ──────────────────────────────────────
 client.on(Events.MessageCreate, async (message: Message) => {
+
   if (message.author.bot) return;
 
-  if (message.guild) incrementMessages(message.guild.id);
+  if (message.guild) {
+    incrementMessages(message.guild.id);
+  }
 
-  // ── PHOTO SYSTEM ─────────────────────────────
+  // ─────────────────────────────
+  // PHOTO SYSTEM
+  // ─────────────────────────────
   handlePhotoSystem(message);
 
   const emoji = getPhotoEmoji(message.channel.id);
+
   if (emoji) {
+
     const hasMedia = message.attachments.some(att =>
       (att.contentType || "").startsWith("image/") ||
       (att.contentType || "").startsWith("video/")
     );
 
-    if (!hasMedia) return message.delete().catch(() => {});
+    if (!hasMedia) {
+      await message.delete().catch(() => {});
+      return;
+    }
+
     await message.react(emoji).catch(() => {});
     return;
   }
 
-  // ── ECONOMY FIRST ─────────────────────────────
+  // ─────────────────────────────
+  // ECONOMY COMMANDS
+  // ─────────────────────────────
   if (message.content.startsWith(ECO_PREFIX)) {
-    const args = message.content.slice(1).trim().split(/\s+/);
-    const name = args.shift()?.toLowerCase();
-    if (!name) return;
 
-    const cmd = ecoCommands.get(name);
-    if (!cmd) return;
+    const args = message.content
+      .slice(ECO_PREFIX.length)
+      .trim()
+      .split(/\s+/);
+
+    const commandName = args.shift()?.toLowerCase();
+
+    if (!commandName) return;
+
+    const command = ecoCommands.get(commandName);
+
+    if (!command) return;
 
     try {
-      await cmd.execute(message, args);
+      await command.execute(message, args);
     } catch (err) {
       console.error(err);
+
+      message.reply(
+        "❌ erreur commande économique"
+      ).catch(() => {});
     }
+
     return;
   }
 
-  // ── IA ───────────────────────────────────────
+  // ─────────────────────────────
+  // IA SYSTEM
+  // ─────────────────────────────
   const ia = await shouldTriggerIA(message, client);
 
   if (ia.trigger) {
-    if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
+
+    if (
+      message.guildId &&
+      isIaBlocked(message.guildId, message.channelId)
+    ) return;
 
     await message.channel.sendTyping();
 
@@ -205,24 +411,61 @@ client.on(Events.MessageCreate, async (message: Message) => {
     );
 
     await message.reply(reply);
+
     return;
   }
 
-  // ── COMMANDS * ───────────────────────────────
+  // ─────────────────────────────
+  // NORMAL COMMANDS
+  // ─────────────────────────────
   if (!message.content.startsWith(PREFIX)) return;
 
-  const args = message.content.slice(1).trim().split(/\s+/);
-  const name = args.shift()?.toLowerCase();
-  if (!name) return;
+  const args = message.content
+    .slice(PREFIX.length)
+    .trim()
+    .split(/\s+/);
 
-  const cmd = commands.get(name);
-  if (!cmd) return;
+  const commandName = args.shift()?.toLowerCase();
+
+  if (!commandName) return;
+
+  const command = commands.get(commandName);
+
+  if (!command) return;
 
   try {
-    await cmd.execute(message, args);
+    await command.execute(message, args);
   } catch (err) {
     console.error(err);
+
+    message.reply(
+      "❌ erreur commande"
+    ).catch(() => {});
   }
+});
+
+// ─── HTTP SERVER ─────────────────────────────────────────
+const PORT = process.env.PORT
+  ? parseInt(process.env.PORT)
+  : 3000;
+
+createServer((req, res) => {
+
+  const status = {
+    status: client.isReady() ? "online" : "starting",
+    bot: client.user?.tag ?? null,
+    guilds: client.guilds.cache.size,
+    uptime: client.uptime ?? 0,
+  };
+
+  res.writeHead(200, {
+    "Content-Type": "application/json",
+  });
+
+  res.end(JSON.stringify(status));
+
+}).listen(PORT, () => {
+  console.log(`🌐 HTTP server listening on ${PORT}`);
 });
 
 // ─── LOGIN ───────────────────────────────────────────────
