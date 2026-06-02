@@ -44,6 +44,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*mute @membre 10m [raison]`",       value: "Rend muet temporairement." },
         { name: "`*unmute @membre`",                  value: "Retire le mute." },
         { name: "`*warn @membre [raison]`",           value: "Avertissement. `*warn list @membre` pour l'historique." },
+        { name: "`*jail @membre [raison]`",           value: "Met un membre en jail — lui retire tous ses rôles et l'isole." },
+        { name: "`*unjail @membre`",                  value: "Libère un membre de jail et lui rend ses rôles." },
         { name: "`*clear [nombre]`",                  value: "Supprime des messages (max 100)." },
         { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon." },
         { name: "`*fermeture [#salon-temp]`",         value: "Ferme le serveur — masque tous les salons à @MEMBRES sauf le salon temporaire mentionné." },
@@ -71,9 +73,9 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*setup origines`",                     value: "Crée un panel réaction-rôle par pays (max 20 par panel)." },
         { name: "`*setup origines edit <ID>`",           value: "Ajoute des origines à un panel existant." },
         { name: "`*boostsetup #annonce #demandes`",      value: "Configure le système boost : annonce auto + demande de rôle perso via formulaire." },
+        { name: "`*photo #salon [emoji]`",               value: "Restreint un salon aux médias uniquement (images/vidéos). Réagit automatiquement avec l'emoji choisi." },
       ),
   },
-
 
   ia: {
     emoji: "🤖",
@@ -98,16 +100,16 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
       .setColor(0x5865f2)
       .setTitle("ℹ️ Utilitaires")
       .addFields(
-        { name: "`*ping`",              value: "Affiche la latence du bot." },
-        { name: "`*info`",              value: "Infos du serveur." },
-        { name: "`*serverprofile`",     value: "Profil visuel du serveur — icône & bannière GIF si disponibles." },
-        { name: "`*stats`",             value: "Stats du serveur : membres, boosts, messages, gens en vocal." },
+        { name: "`*ping`",               value: "Affiche la latence du bot." },
+        { name: "`*info`",               value: "Infos du serveur." },
+        { name: "`*serverprofile`",      value: "Profil visuel du serveur — icône & bannière GIF si disponibles." },
+        { name: "`*stats`",              value: "Stats du serveur : membres, boosts, messages, gens en vocal." },
         { name: "`*userinfo [@membre]`", value: "Infos détaillées d'un membre (compte, rôles, badges, banner)." },
-        { name: "`*aide`",              value: "Ce panneau d'aide." },
+        { name: "`*aide`",               value: "Ce panneau d'aide." },
         { name: "`*dm @membre message`", value: "Envoie un DM via le bot à un membre (modo). `*dm @role message` pour tout un rôle (owner)." },
-        { name: "`*say [texte]`",       value: "Le bot envoie le message et supprime le tien (modo)." },
-        { name: "`*send + fichier`",    value: "Envoie un fichier/image via le bot (modo)." },
-        { name: "`*talk [#salon]`",     value: "Envoie un message en tant que le bot avec formatage préservé + image optionnelle. Guidé en 2 étapes." },
+        { name: "`*say [texte]`",        value: "Le bot envoie le message et supprime le tien (modo)." },
+        { name: "`*send + fichier`",     value: "Envoie un fichier/image via le bot (modo)." },
+        { name: "`*talk [#salon]`",      value: "Envoie un message en tant que le bot avec formatage préservé + image optionnelle. Guidé en 2 étapes." },
       ),
   },
 
@@ -124,11 +126,11 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*delsalon #salon1 ...`",    value: "Supprime les salons mentionnés (ou le salon actuel)." },
         { name: "`*broadcast message`",        value: "Envoie un message dans tous les salons du serveur." },
         { name: "`*parle message`",            value: "Envoie un message dans **tous** les salons de **tous** les serveurs." },
-        { name: "`*parle CHANNEL_ID msg`",       value: "Envoie un message dans un salon précis (fonctionne en DM au bot)." },
-        { name: "`*botprofil pseudo <nom>`",    value: "Change le pseudo du bot sur ce serveur uniquement." },
-        { name: "`*botprofil avatar <url>`",    value: "Change l'avatar du bot sur ce serveur (GIF supporté)." },
-        { name: "`*botprofil banniere <url>`",  value: "Change la bannière du bot sur ce serveur (GIF supporté)." },
-        { name: "`*botprofil reset`",            value: "Remet le profil par défaut sur ce serveur." },
+        { name: "`*parle CHANNEL_ID msg`",     value: "Envoie un message dans un salon précis (fonctionne en DM au bot)." },
+        { name: "`*botprofil pseudo <nom>`",   value: "Change le pseudo du bot sur ce serveur uniquement." },
+        { name: "`*botprofil avatar <url>`",   value: "Change l'avatar du bot sur ce serveur (GIF supporté)." },
+        { name: "`*botprofil banniere <url>`", value: "Change la bannière du bot sur ce serveur (GIF supporté)." },
+        { name: "`*botprofil reset`",          value: "Remet le profil par défaut sur ce serveur." },
       ),
   },
 
@@ -188,12 +190,12 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
             "```\n" +
             "*config set modoRole @Modérateur\n" +
             "*config set welcomeChannel #bienvenue\n" +
-            "*config set botName Aria\n" +
+            "*config set botName Bissapienne\n" +
             "*config list\n" +
             "```",
         },
       )
-      .setFooter({ text: "Si une valeur n'est pas configurée, le bot utilise les valeurs par défaut (serveur MIRAGE)." }),
+      .setFooter({ text: "Si une valeur n'est pas configurée, le bot utilise les valeurs par défaut codées en dur." }),
   },
 };
 
@@ -206,7 +208,7 @@ function makePanelEmbed() {
     .setDescription("Clique sur une catégorie pour voir les commandes correspondantes.")
     .addFields(
       { name: "🎮 Jeux",        value: "Loup-Garou, Undercover, Quiz…",          inline: true },
-      { name: "🛡️ Modération",  value: "Ban, kick, mute, warn…",                  inline: true },
+      { name: "🛡️ Modération",  value: "Ban, kick, mute, warn, jail…",            inline: true },
       { name: "🛠️ Outils",      value: "Tickets, giveaway, poll, confess…",       inline: true },
       { name: "ℹ️ Utilitaires", value: "Ping, info, say…",                         inline: true },
       { name: "⚙️ Config bot",  value: "Configurer le bot pour ce serveur.",       inline: true },
