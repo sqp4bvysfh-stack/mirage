@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import type { Command } from "../types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
-const GIF_PATH  = join(__dirname, "../../assets/twerk.gif");
+const GIF_PATH = join(process.cwd(), "assets/twerk.gif");
 
 export const twerkCommand: Command = {
   name: "twerk",
