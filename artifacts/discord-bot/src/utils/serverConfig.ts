@@ -49,7 +49,8 @@ const store = new Map<string, GuildConfig>();
 // ─── Config par défaut (sauvegardée dans le code) ─────────────────────────
 
 const DEFAULT_CONFIGS: Record<string, GuildConfig> = {
-  "1493627273302118551": {
+ "1493627273302118551": {
+    botName:           "Bissapienne",
     membresRole:       "1495371361911050333",
     welcomeChannel:    "1501292133384978583",
     giveawayChannel:   "1505432430809714800",
@@ -64,6 +65,7 @@ const DEFAULT_CONFIGS: Record<string, GuildConfig> = {
     ownerUser:         "1495371325064089680",
     demandeChannel:    "1502876718686539876",
   },
+
 };
 
 for (const [guildId, cfg] of Object.entries(DEFAULT_CONFIGS)) {
