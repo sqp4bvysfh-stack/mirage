@@ -5,6 +5,8 @@ import type { Command } from "../types.js";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const GIF_PATH = join(process.cwd(), "assets/twerk.gif");
+console.log("🔍 GIF path:", GIF_PATH);
+
 
 export const twerkCommand: Command = {
   name: "twerk",
