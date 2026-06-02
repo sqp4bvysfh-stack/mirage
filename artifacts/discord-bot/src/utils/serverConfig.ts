@@ -30,7 +30,7 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
   membresRole:       "👥 Rôle membres",
   boostChannel:      "💎 Salon annonce boost",
   demandeChannel:    "📋 Salon demandes rôle perso",
-  confessionChannel: "🕵️ Salon confessions",
+  confessionChannel: "🕵 Salon confessions",
   confessionLog:     "📝 Salon logs confessions",
   lgRole:            "🐺 Rôle décoratif Loup-Garou",
   lgSalon:           "🌙 Salon Loup-Garou",
@@ -44,8 +44,34 @@ export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
 
 // ─── Stockage ─────────────────────────────────────────────────────────────
 
-// /data est un volume persistant sur Railway (survit aux redéploiements).
-// Si le dossier n'existe pas (dev local), on retombe sur le répertoire courant.
+const store = new Map<string, GuildConfig>();
+
+// ─── Config par défaut (sauvegardée dans le code) ─────────────────────────
+
+const DEFAULT_CONFIGS: Record<string, GuildConfig> = {
+  "1493627273302118551": {
+    membresRole:       "1495371361911050333",
+    welcomeChannel:    "1501292133384978583",
+    giveawayChannel:   "1505432430809714800",
+    logsChannel:       "1495371510544601200",
+    modoRole:          "1495371336955203685",
+    staffRole:         "1495371332357984306",
+    abuseRole:         "1495371336032190604",
+    antiPubRole:       "1495371325064089680",
+    boostChannel:      "1495371458514259968",
+    lgSalon:           "1511205119906283610",
+    lgRole:            "1511205224503709746",
+    ownerUser:         "1495371325064089680",
+    demandeChannel:    "1502876718686539876",
+  },
+};
+
+for (const [guildId, cfg] of Object.entries(DEFAULT_CONFIGS)) {
+  store.set(guildId, cfg);
+}
+
+// ─── Fichier persistant ───────────────────────────────────────────────────
+
 const CONFIG_FILE = (() => {
   try {
     if (!existsSync("/data")) mkdirSync("/data", { recursive: true });
@@ -54,21 +80,18 @@ const CONFIG_FILE = (() => {
     return join(process.cwd(), "server-config.json");
   }
 })();
-const store       = new Map<string, GuildConfig>();
 
 function loadData(raw: string): void {
   const data = JSON.parse(raw) as Record<string, GuildConfig>;
   for (const [guildId, cfg] of Object.entries(data)) {
-    store.set(guildId, cfg);
+    store.set(guildId, { ...store.get(guildId), ...cfg });
   }
 }
 
-// 1. Charger depuis la variable d'env BOT_CONFIG (persiste sur Railway)
 if (process.env.BOT_CONFIG) {
   try { loadData(process.env.BOT_CONFIG); } catch { /* malformé */ }
 }
 
-// 2. Fusionner avec le fichier local (plus récent que l'env si le bot a tourné)
 try {
   const raw = readFileSync(CONFIG_FILE, "utf-8");
   loadData(raw);
@@ -93,14 +116,12 @@ export function setConfig(guildId: string, key: ConfigKey, value: string): void 
   save();
 }
 
-/** Retourne la config complète encodée en JSON — à coller dans BOT_CONFIG sur Railway */
 export function exportConfigJson(): string {
   const data: Record<string, GuildConfig> = {};
   for (const [guildId, cfg] of store) data[guildId] = cfg;
   return JSON.stringify(data);
 }
 
-/** Extrait un ID brut depuis une mention Discord ou renvoie la valeur telle quelle */
 export function extractId(value: string): string {
   const match = value.match(/^<[#@&]+(\d+)>$/);
   return match ? match[1] : value.trim();
