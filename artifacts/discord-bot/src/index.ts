@@ -57,22 +57,6 @@ import { botprofilCommand } from "./commands/botprofil.js";
 import { jailCommand, unjailCommand } from "./commands/jail.js";
 import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
 
-// ─── ÉCONOMIE (&) ─────────────────────────────────────────
-import {
-  soldeCommand, dailyCommand, workCommand, payCommand,
-  depCommand, depositCommand, withCommand, withdrawCommand,
-  repCommand, metierCommand, topCommand, ecoHelpCommand,
-} from "./commands/economy.js";
-import { braquerCommand, cambriolerCommand, casserCommand, jugerCommand, robCommand } from "./commands/jobs.js";
-import { teamCommand } from "./commands/team.js";
-import { livretCommand } from "./commands/livret.js";
-import { tycoonCommand } from "./commands/tycoon.js";
-import { cryptoCommand } from "./commands/crypto.js";
-import { rouletteCommand, blackjackCommand, bjCommand } from "./commands/casino.js";
-import { shopCommand } from "./commands/shop.js";
-import { ecoconfigCommand } from "./commands/ecoconfig.js";
-import { coinsetupCommand, getCoinSetup } from "./commands/coinsetup.js";
-
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
 if (!token) {
@@ -80,24 +64,11 @@ if (!token) {
   process.exit(1);
 }
 
-export const PREFIX     = "*";
-export const ECO_PREFIX = "&";
+export const PREFIX = "*";
+const MAIN_GUILD_ID = "1362520000426152036";
 
 // ─── COLLECTIONS ─────────────────────────────────────────
-const commands    = new Collection<string, Command>();
-const ecoCommands = new Collection<string, Command>();
-
-for (const cmd of [
-  soldeCommand, dailyCommand, workCommand, payCommand,
-  depCommand, depositCommand, withCommand, withdrawCommand,
-  repCommand, metierCommand, topCommand, ecoHelpCommand,
-  braquerCommand, cambriolerCommand, casserCommand, jugerCommand, robCommand,
-  teamCommand, livretCommand, tycoonCommand, cryptoCommand,
-  rouletteCommand, blackjackCommand, bjCommand, shopCommand,
-  ecoconfigCommand, coinsetupCommand,
-]) {
-  ecoCommands.set(cmd.name, cmd);
-}
+const commands = new Collection<string, Command>();
 
 for (const cmd of [
   pingCommand,
@@ -179,8 +150,17 @@ const client = new Client({
 registerLogs(client);
 
 // ─── READY ───────────────────────────────────────────────
-client.once(Events.ClientReady, (c) => {
+client.once(Events.ClientReady, async (c) => {
   console.log(`✅ Bot en ligne : ${c.user.tag}`);
+
+  for (const guild of c.guilds.cache.values()) {
+    if (guild.id === MAIN_GUILD_ID) continue;
+
+    console.log(`🚪 Serveur non autorisé quitté : ${guild.name}`);
+    await guild.leave().catch((err) => {
+      console.error(`Impossible de quitter ${guild.name}:`, err);
+    });
+  }
 });
 
 // ─── ANTI RAID ────────────────────────────────────────────
@@ -190,6 +170,8 @@ const joinTracker    = new Map<string, { time: number; memberId: string }[]>();
 const raidMode       = new Set<string>();
 
 client.on(Events.GuildMemberAdd, async (member) => {
+  if (member.guild.id !== MAIN_GUILD_ID) return;
+
   const guildId = member.guild.id;
   const now     = Date.now();
 
@@ -222,9 +204,11 @@ client.on(Events.GuildMemberAdd, async (member) => {
 });
 
 // ─── WELCOME ─────────────────────────────────────────────
-const DEFAULT_WELCOME_CHANNEL = "1476532494768672850";
+const DEFAULT_WELCOME_CHANNEL = "1523502660295069777";
 
 client.on(Events.GuildMemberAdd, async (member) => {
+  if (member.guild.id !== MAIN_GUILD_ID) return;
+
   const welcomeChannelId = getConfig(member.guild.id).welcomeChannel ?? DEFAULT_WELCOME_CHANNEL;
   const salon = member.guild.channels.cache.get(welcomeChannelId);
   if (salon?.isTextBased()) salon.send(`👋 Bienvenue ${member}`).catch(() => {});
@@ -232,6 +216,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
 
 // ─── BOOST ───────────────────────────────────────────────
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
+  if (newMember.guild.id !== MAIN_GUILD_ID) return;
+
   try {
     await handleBoostMember(oldMember as import("discord.js").GuildMember, newMember);
   } catch (err) {
@@ -241,6 +227,8 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
 
 // ─── INTERACTIONS ────────────────────────────────────────
 client.on(Events.InteractionCreate, async (interaction) => {
+  if (interaction.guildId !== MAIN_GUILD_ID) return;
+
   try {
     await handleConfessionInteraction(interaction);
     await handleTicketInteraction(interaction);
@@ -254,16 +242,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
 // ─── ORIGINES — réaction ajoutée ─────────────────────────
 client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
-
-  const guildId = reaction.message.guildId;
-  if (guildId && reaction.emoji.name === "✅") {
-    const setup = getCoinSetup(guildId);
-    if (setup && reaction.message.id === setup.messageId) {
-      const guild  = reaction.message.guild ?? await client.guilds.fetch(guildId).catch(() => null);
-      const member = await guild?.members.fetch(user.id).catch(() => null);
-      if (member) await member.roles.add(setup.roleId).catch(() => {});
-    }
-  }
+  if (reaction.message.guildId !== MAIN_GUILD_ID) return;
 
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
@@ -278,6 +257,7 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 // ─── ORIGINES — réaction retirée ─────────────────────────
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
+  if (reaction.message.guildId !== MAIN_GUILD_ID) return;
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
   const cfg    = config.find(o => o.emoji === reaction.emoji.name);
@@ -289,13 +269,15 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
 });
 
 // ─── MESSAGES ────────────────────────────────────────────
-const LIENS_AUTORISES       = new Set(["mrag"]);
+const LIENS_AUTORISES       = new Set(["nci"]);
 const INVITE_REGEX          = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
 const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
 
 client.on(Events.MessageCreate, async (message: Message) => {
   if (message.author.bot) return;
-  if (message.guild) incrementMessages(message.guild.id);
+  if (!message.guild || message.guild.id !== MAIN_GUILD_ID) return;
+
+  incrementMessages(message.guild.id);
 
   // ── PHOTO SYSTEM ─────────────────────────────────────────────────────────
   handlePhotoSystem(message);
@@ -354,23 +336,6 @@ client.on(Events.MessageCreate, async (message: Message) => {
       message.guildId ?? undefined
     );
     await message.reply(reply);
-    return;
-  }
-
-  // ── ÉCONOMIE & ───────────────────────────────────────────────────────────
-  if (message.content.startsWith(ECO_PREFIX)) {
-    if (!message.guild) return;
-    const ecoArgs    = message.content.slice(ECO_PREFIX.length).trim().split(/\s+/);
-    const ecoCmdName = ecoArgs.shift()?.toLowerCase();
-    if (!ecoCmdName) return;
-    const ecoCmd = ecoCommands.get(ecoCmdName);
-    if (!ecoCmd) return;
-    try {
-      await ecoCmd.execute(message, ecoArgs);
-    } catch (err) {
-      console.error(err);
-      message.reply("❌ erreur commande économique").catch(() => {});
-    }
     return;
   }
 
