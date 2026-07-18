@@ -136,6 +136,7 @@ for (const cmd of [
   photoCommand,
   blCommand,
   recrutementCommand,
+  profilCommand,
   unblCommand,
   antiraidCommand,
   antispamCommand,
