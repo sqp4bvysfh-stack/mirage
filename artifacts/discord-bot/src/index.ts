@@ -63,6 +63,11 @@ import { isAntiRaidEnabled } from "./utils/antiraid.js";
 import { antispamCommand } from "./commands/antispam.js";
 import { handleAntiSpam } from "./utils/antispam.js";
 import { recrutementCommand } from "./commands/recrutement.js";
+import {
+  profilCommand,
+  handleProfilReactionAdd,
+  handleProfilReactionRemove,
+} from "./commands/profil.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -284,6 +289,8 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (user.bot) return;
   if (reaction.message.guildId !== MAIN_GUILD_ID) return;
 
+  await handleProfilReactionAdd(reaction, user);
+
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
   const cfg    = config.find(o => o.emoji === reaction.emoji.name);
@@ -298,6 +305,8 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
 client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (user.bot) return;
   if (reaction.message.guildId !== MAIN_GUILD_ID) return;
+
+  await handleProfilReactionRemove(reaction, user);
   const config = originesPanels.get(reaction.message.id);
   if (!config) return;
   const cfg    = config.find(o => o.emoji === reaction.emoji.name);
