@@ -44,14 +44,21 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*mute @membre 10m [raison]`",       value: "Rend muet temporairement." },
         { name: "`*unmute @membre`",                  value: "Retire le mute." },
         { name: "`*warn @membre [raison]`",           value: "Avertissement. `*warn list @membre` pour l'historique." },
+        { name: "`*bl @membre [raison]`",              value: "Ajoute définitivement un utilisateur à la blacklist et le bannit." },
+        { name: "`*unbl ID`",                          value: "Retire un utilisateur de la blacklist." },
+        { name: "`*bl list`",                          value: "Affiche les utilisateurs actuellement blacklistés." },
+        { name: "`*antiraid on/off/status`",           value: "Active, désactive ou affiche l’état de l’anti-raid." },
+        { name: "`*antispam on/off/status`",           value: "Active, désactive ou affiche l’état de l’anti-spam du chat." },
         { name: "`*jail @membre [raison]`",           value: "Met un membre en jail — lui retire tous ses rôles et l'isole." },
         { name: "`*unjail @membre`",                  value: "Libère un membre de jail et lui rend ses rôles." },
         { name: "`*clear [nombre]`",                  value: "Supprime des messages (max 100)." },
-        { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon." },
+        { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon actuel." },
+        { name: "`*lock catégorie` / `*unlock catégorie`", value: "Verrouille / déverrouille tous les salons de la catégorie actuelle." },
         { name: "`*fermeture [#salon-temp]`",         value: "Ferme le serveur — masque tous les salons à @MEMBRES sauf le salon temporaire mentionné." },
         { name: "`*ouverture`",                       value: "Rouvre le serveur — redonne l'accès à @MEMBRES sur tous les salons." },
         { name: "`*roleadd / *roleremove`",           value: "Ajouter / retirer un rôle à un membre." },
-        { name: "🚨 Anti-raid",                       value: "Automatique — kick les comptes < 7 jours si 5 arrivées en 10s." },
+        { name: "🚨 Anti-raid",                       value: "Détecte les arrivées massives et expulse les comptes récents lorsqu’il est activé." },
+        { name: "💬 Anti-spam",                       value: "Détecte et bloque les envois excessifs de messages lorsqu’il est activé." },
         { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique." },
         { name: "📊 Hiérarchie",                      value: "👑 Owner > 🎯 Staff > ⚙️ Admin > ⚠️ Abus > 🛡️ Modo\nConfigurable par serveur via `*config set`." },
       ),
@@ -67,7 +74,6 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*ticket setup`",                       value: "Initialise le panneau de tickets dans ce salon." },
         { name: "`*giveaway <durée> <prix>`",            value: "Lance un giveaway avec conditions (vocal + statut).\nEx : `*giveaway 1h Nitro`  —  Durées : `30m`, `1h`, `2j`." },
         { name: "`*reroll <ID message>`",                value: "Relance le tirage d'un giveaway sans conditions." },
-        { name: "`*topgiveaway <durée> <nb> <prix>`",   value: "Giveaway Top X — les boosters ont **3x** plus de chances. Ex : `*topgiveaway 2j 10 Nitro`" },
         { name: "`*poll \"question\" \"choix1\" ...`",   value: "Crée un sondage (min 2, max 10 choix)." },
         { name: "`*confess setup #conf #logs`",          value: "Initialise le salon de confessions anonymes." },
         { name: "`*setup origines`",                     value: "Crée un panel réaction-rôle par pays (max 20 par panel)." },
@@ -208,12 +214,12 @@ function makePanelEmbed() {
     .setDescription("Clique sur une catégorie pour voir les commandes correspondantes.")
     .addFields(
       { name: "🎮 Jeux",        value: "Loup-Garou, Undercover, Quiz…",          inline: true },
-      { name: "🛡️ Modération",  value: "Ban, kick, mute, warn, jail…",            inline: true },
+      { name: "🛡️ Modération",  value: "Sanctions, blacklist, sécurité, lock…",    inline: true },
       { name: "🛠️ Outils",      value: "Tickets, giveaway, poll, confess…",       inline: true },
       { name: "ℹ️ Utilitaires", value: "Ping, info, say…",                         inline: true },
       { name: "⚙️ Config bot",  value: "Configurer le bot pour ce serveur.",       inline: true },
     )
-    .setFooter({ text: "Préfixe : *  —  Multi-serveur compatible" });
+    .setFooter({ text: "Préfixe : *  —  Serveur Mirage" });
 }
 
 function makePanelRows() {
