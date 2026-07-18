@@ -10,6 +10,8 @@ import {
 } from "discord.js";
 import type { Command } from "../types.js";
 import { getConfig, setConfig } from "../utils/serverConfig.js";
+import { isModerator } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 
 function getBoutons(messageId: string) {
   return new ActionRowBuilder<ButtonBuilder>().addComponents(
@@ -152,11 +154,10 @@ export async function handleConfessionInteraction(interaction: Interaction) {
 export const confessionCommand: Command = {
   name: "confess", description: "Initialise le salon de confessions", usage: "*confess setup #confession #logs",
   execute: async (message, args) => {
-    const isMod =
-      message.member?.permissions.has("ManageMessages") ||
-      message.member?.permissions.has("Administrator");
-
-    if (!isMod) { await message.reply("❌ Tu n'as pas la permission."); return; }
+    if (!message.member || !isModerator(message.member)) {
+      await message.reply("❌ Tu n’as pas la permission.");
+      return;
+    }
     if (args[0]?.toLowerCase() !== "setup") {
       await message.reply("❌ Utilise `*confess setup #salon-confessions #salon-logs`"); return;
     }
@@ -187,5 +188,17 @@ export const confessionCommand: Command = {
       `✅ Salon de confession initialisé dans ${confChan}` +
       (logChan ? ` — logs dans ${logChan}` : "") + " !"
     );
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("⚙️ Confessions configurées")
+      .addFields(
+        { name: "Salon public", value: `${confChan}`, inline: true },
+        { name: "Logs privés", value: logChan ? `${logChan}` : "Non configuré", inline: true },
+        { name: "Par", value: `${message.author}`, inline: true },
+      )
+      .setTimestamp();
+
+    await sendServerLog(message.guild!, { embeds: [logEmbed] });
   },
 };
