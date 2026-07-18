@@ -8,8 +8,10 @@ import {
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 import { getConfig } from "../utils/serverConfig.js";
+import { EmbedBuilder } from "discord.js";
+import { sendServerLog } from "../utils/logs.js";
 
-const DEFAULT_MEMBRES_ROLE = "1476411015586517269";
+const DEFAULT_MEMBRES_ROLE = "1362527149378240814";
 
 export const fermetureCommand: Command = {
   name:        "fermeture",
@@ -49,6 +51,22 @@ export const fermetureCommand: Command = {
       `🔒 **Serveur fermé** — ${count} salons masqués pour <@&${membresRoleId}>.` +
       (tempChannel ? `\n📌 Salon temporaire gardé ouvert : ${tempChannel}` : "")
     );
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0xe74c3c)
+      .setTitle("🔒 Serveur fermé")
+      .addFields(
+        { name: "Modérateur", value: `${message.author}`, inline: true },
+        { name: "Salons masqués", value: String(count), inline: true },
+        {
+          name: "Salon temporaire",
+          value: tempChannel ? `${tempChannel}` : "Aucun",
+          inline: true,
+        },
+      )
+      .setTimestamp();
+
+    await sendServerLog(guild, { embeds: [logEmbed] });
   },
 };
 
@@ -83,5 +101,16 @@ export const ouvertureCommand: Command = {
     }
 
     await msg.edit(`🔓 **Serveur ouvert** — accès restauré sur ${count} salons pour <@&${membresRoleId}>.`);
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle("🔓 Serveur rouvert")
+      .addFields(
+        { name: "Modérateur", value: `${message.author}`, inline: true },
+        { name: "Salons restaurés", value: String(count), inline: true },
+      )
+      .setTimestamp();
+
+    await sendServerLog(guild, { embeds: [logEmbed] });
   },
 };
