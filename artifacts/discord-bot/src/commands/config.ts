@@ -9,6 +9,7 @@ import {
   CONFIG_DESCRIPTIONS,
   type ConfigKey,
 } from "../utils/serverConfig.js";
+import { sendServerLog } from "../utils/logs.js";
 
 const VALID_KEYS = Object.keys(CONFIG_DESCRIPTIONS) as ConfigKey[];
 
@@ -67,6 +68,18 @@ export const configCommand: Command = {
         `✅ **${CONFIG_DESCRIPTIONS[key]}** défini à \`${value}\`\n` +
         `*(sauvegardé — actif immédiatement)*`
       );
+
+      const logEmbed = new EmbedBuilder()
+        .setColor(0x95a5a6)
+        .setTitle("⚙️ Configuration modifiée")
+        .addFields(
+          { name: "Clé", value: `\`${key}\``, inline: true },
+          { name: "Nouvelle valeur", value: `\`${value}\``, inline: true },
+          { name: "Par", value: `${message.author}`, inline: true },
+        )
+        .setTimestamp();
+
+      await sendServerLog(message.guild!, { embeds: [logEmbed] });
       return;
     }
 
