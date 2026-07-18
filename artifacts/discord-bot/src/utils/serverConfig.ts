@@ -1,127 +1,142 @@
-import { readFileSync, writeFileSync, mkdirSync, existsSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 
-// ─── Types ────────────────────────────────────────────────────────────────
-
 export type ConfigKey =
-  | "botName"           // Nom de l'IA
-  | "welcomeChannel"    // Salon de bienvenue
-  | "giveawayChannel"   // Salon giveaway
-  | "membresRole"       // Rôle membres (lock / fermeture)
-  | "boostChannel"      // Salon annonce boost
-  | "demandeChannel"    // Salon demandes rôle perso
-  | "confessionChannel" // Salon confessions
-  | "confessionLog"     // Salon logs confessions
-  | "lgRole"            // Rôle décoratif Loup-Garou
-  | "lgSalon"           // Salon Loup-Garou
-  | "staffRole"         // Rôle staff (tickets candidature)
-  | "abuseRole"         // Rôle gestion abus (tickets signalement)
-  | "modoRole"          // Rôle modérateur
-  | "ownerUser"         // ID user de l'owner (tickets owner)
-  | "antiPubRole"       // Rôle à mentionner dans l'anti-pub
-  | "logsChannel";      // Salon de logs
+  | "botName"
+  | "welcomeChannel"
+  | "giveawayChannel"
+  | "membresRole"
+  | "boostChannel"
+  | "demandeChannel"
+  | "confessionChannel"
+  | "confessionLog"
+  | "lgRole"
+  | "lgSalon"
+  | "staffRole"
+  | "abuseRole"
+  | "modoRole"
+  | "ownerUser"
+  | "antiPubRole"
+  | "logsChannel";
 
 export type GuildConfig = Partial<Record<ConfigKey, string>>;
 
 export const CONFIG_DESCRIPTIONS: Record<ConfigKey, string> = {
-  botName:           "🤖 Nom de l'IA",
+  botName:           "🤖 Nom de l’IA",
   welcomeChannel:    "👋 Salon de bienvenue",
   giveawayChannel:   "🎉 Salon giveaway",
   membresRole:       "👥 Rôle membres",
   boostChannel:      "💎 Salon annonce boost",
   demandeChannel:    "📋 Salon demandes rôle perso",
-  confessionChannel: "🕵 Salon confessions",
+  confessionChannel: "🕵️ Salon confessions",
   confessionLog:     "📝 Salon logs confessions",
   lgRole:            "🐺 Rôle décoratif Loup-Garou",
   lgSalon:           "🌙 Salon Loup-Garou",
-  staffRole:         "🎯 Rôle staff (tickets)",
-  abuseRole:         "⚠️ Rôle gestion abus (tickets)",
+  staffRole:         "🎯 Rôle staff",
+  abuseRole:         "⚠️ Rôle gestion staff",
   modoRole:          "🛡️ Rôle modérateur",
-  ownerUser:         "👑 ID de l'owner (tickets)",
+  ownerUser:         "👑 ID de l’owner",
   antiPubRole:       "🚫 Rôle à mentionner anti-pub",
   logsChannel:       "📋 Salon de logs",
 };
 
-// ─── Stockage ─────────────────────────────────────────────────────────────
+const MAIN_GUILD_ID = "1362520000426152036";
 
-const store = new Map<string, GuildConfig>();
-
-// ─── Config par défaut (sauvegardée dans le code) ─────────────────────────
-
-const DEFAULT_CONFIGS: Record<string, GuildConfig> = {
- "1493627273302118551": {
-    botName:           "Bissapienne",
-    membresRole:       "1495371361911050333",
-    welcomeChannel:    "1501292133384978583",
-    giveawayChannel:   "1505432430809714800",
-    logsChannel:       "1495371510544601200",
-    modoRole:          "1495371336955203685",
-    staffRole:         "1495371332357984306",
-    abuseRole:         "1495371336032190604",
-    antiPubRole:       "1495371325064089680",
-    boostChannel:      "1495371458514259968",
-    lgSalon:           "1511205119906283610",
-    lgRole:            "1511205224503709746",
-    ownerUser:         "1495371325064089680",
-    demandeChannel:    "1502876718686539876",
-  },
-
+const DEFAULT_CONFIG: GuildConfig = {
+  botName:           " ChiChi",
+  welcomeChannel:    "1523502660295069777",
+  giveawayChannel:   "1528080830516170813",
+  membresRole:       "1362527149378240814",
+  boostChannel:      "1528077192615952584",
+  demandeChannel:    "1528100158858858636",
+  confessionChannel: "1528084269753438259",
+  confessionLog:     "1528108255484707038",
+  lgSalon:           "1528108478416031866",
+  staffRole:         "1405987770891112589",
+  abuseRole:         "1405980987418083491",
+  modoRole:          "1528059662891618354",
 };
 
-for (const [guildId, cfg] of Object.entries(DEFAULT_CONFIGS)) {
-  store.set(guildId, cfg);
-}
-
-// ─── Fichier persistant ───────────────────────────────────────────────────
+let config: GuildConfig = { ...DEFAULT_CONFIG };
 
 const CONFIG_FILE = (() => {
   try {
     if (!existsSync("/data")) mkdirSync("/data", { recursive: true });
-    return "/data/server-config.json";
+    return "/data/no-chill-config.json";
   } catch {
-    return join(process.cwd(), "server-config.json");
+    return join(process.cwd(), "no-chill-config.json");
   }
 })();
 
 function loadData(raw: string): void {
-  const data = JSON.parse(raw) as Record<string, GuildConfig>;
-  for (const [guildId, cfg] of Object.entries(data)) {
-    store.set(guildId, { ...store.get(guildId), ...cfg });
-  }
+  const parsed = JSON.parse(raw) as GuildConfig | Record<string, GuildConfig>;
+
+  // Accepte l’ancien format { guildId: {...} } pour garder les anciennes données.
+  const legacy = parsed as Record<string, GuildConfig>;
+  const loaded =
+    legacy[MAIN_GUILD_ID] && typeof legacy[MAIN_GUILD_ID] === "object"
+      ? legacy[MAIN_GUILD_ID]
+      : (parsed as GuildConfig);
+
+  config = { ...DEFAULT_CONFIG, ...loaded };
 }
 
 if (process.env.BOT_CONFIG) {
-  try { loadData(process.env.BOT_CONFIG); } catch { /* malformé */ }
+  try {
+    loadData(process.env.BOT_CONFIG);
+  } catch (error) {
+    console.error("❌ BOT_CONFIG malformé :", error);
+  }
 }
 
 try {
-  const raw = readFileSync(CONFIG_FILE, "utf-8");
-  loadData(raw);
-} catch { /* fichier inexistant */ }
+  if (existsSync(CONFIG_FILE)) {
+    loadData(readFileSync(CONFIG_FILE, "utf-8"));
+  }
+} catch (error) {
+  console.error("❌ Impossible de charger la configuration No Chill :", error);
+}
 
 function save(): void {
-  const data: Record<string, GuildConfig> = {};
-  for (const [guildId, cfg] of store) data[guildId] = cfg;
-  const json = JSON.stringify(data, null, 2);
-  try { writeFileSync(CONFIG_FILE, json); } catch { /* lecture seule */ }
+  try {
+    writeFileSync(
+      CONFIG_FILE,
+      JSON.stringify(config, null, 2),
+      "utf-8",
+    );
+  } catch (error) {
+    console.error("❌ Impossible de sauvegarder la configuration No Chill :", error);
+  }
 }
 
-// ─── API publique ──────────────────────────────────────────────────────────
-
+// On garde guildId dans les signatures pour ne casser aucune commande existante.
 export function getConfig(guildId: string): GuildConfig {
-  return store.get(guildId) ?? {};
+  if (guildId !== MAIN_GUILD_ID) return {};
+  return { ...config };
 }
 
-export function setConfig(guildId: string, key: ConfigKey, value: string): void {
-  const existing = store.get(guildId) ?? {};
-  store.set(guildId, { ...existing, [key]: value });
+export function setConfig(
+  guildId: string,
+  key: ConfigKey,
+  value: string,
+): void {
+  if (guildId !== MAIN_GUILD_ID) return;
+
+  config = {
+    ...config,
+    [key]: value,
+  };
+
   save();
 }
 
 export function exportConfigJson(): string {
-  const data: Record<string, GuildConfig> = {};
-  for (const [guildId, cfg] of store) data[guildId] = cfg;
-  return JSON.stringify(data);
+  return JSON.stringify(config);
 }
 
 export function extractId(value: string): string {
