@@ -31,11 +31,11 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
 
   moderation: {
     emoji: "🛡️",
-    label: "Modération",
+    label: "Sanctions",
     embed: new EmbedBuilder()
       .setColor(0xe74c3c)
-      .setTitle("🛡️ Modération")
-      .setDescription("Réservées aux modérateurs. ⚠️ La hiérarchie est respectée sur **tous les serveurs** — tu ne peux pas sanctionner quelqu'un au-dessus de toi.")
+      .setTitle("🛡️ Modération — Sanctions")
+      .setDescription("Réservées à l’équipe de modération. ⚠️ La hiérarchie du serveur est respectée : tu ne peux pas sanctionner quelqu’un placé au-dessus de toi.")
       .addFields(
         { name: "`*ban @membre [raison]`",            value: "Bannit définitivement." },
         { name: "`*unban [ID]`",                      value: "Débannit par ID." },
@@ -43,24 +43,35 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*kick @membre [raison]`",           value: "Expulse un membre." },
         { name: "`*mute @membre 10m [raison]`",       value: "Rend muet temporairement." },
         { name: "`*unmute @membre`",                  value: "Retire le mute." },
-        { name: "`*warn @membre [raison]`",           value: "Avertissement. `*warn list @membre` pour l'historique." },
-        { name: "`*bl @membre [raison]`",              value: "Ajoute définitivement un utilisateur à la blacklist et le bannit." },
-        { name: "`*unbl ID`",                          value: "Retire un utilisateur de la blacklist." },
-        { name: "`*bl list`",                          value: "Affiche les utilisateurs actuellement blacklistés." },
-        { name: "`*antiraid on/off/status`",           value: "Active, désactive ou affiche l’état de l’anti-raid." },
-        { name: "`*antispam on/off/status`",           value: "Active, désactive ou affiche l’état de l’anti-spam du chat." },
-        { name: "`*jail @membre [raison]`",           value: "Met un membre en jail — lui retire tous ses rôles et l'isole." },
+        { name: "`*warn @membre [raison]`",           value: "Avertissement. `*warn list @membre` pour l’historique." },
+        { name: "`*jail @membre [raison]`",           value: "Met un membre en jail, lui retire ses rôles et l’isole." },
         { name: "`*unjail @membre`",                  value: "Libère un membre de jail et lui rend ses rôles." },
-        { name: "`*clear [nombre]`",                  value: "Supprime des messages (max 100)." },
-        { name: "`*lock` / `*unlock`",                value: "Verrouille / déverrouille le salon actuel." },
-        { name: "`*lock catégorie` / `*unlock catégorie`", value: "Verrouille / déverrouille tous les salons de la catégorie actuelle." },
-        { name: "`*fermeture [#salon-temp]`",         value: "Ferme le serveur — masque tous les salons à @MEMBRES sauf le salon temporaire mentionné." },
-        { name: "`*ouverture`",                       value: "Rouvre le serveur — redonne l'accès à @MEMBRES sur tous les salons." },
-        { name: "`*roleadd / *roleremove`",           value: "Ajouter / retirer un rôle à un membre." },
+        { name: "`*bl @membre [raison]`",             value: "Ajoute définitivement un utilisateur à la blacklist et le bannit." },
+        { name: "`*unbl ID`",                         value: "Retire un utilisateur de la blacklist." },
+        { name: "`*bl list`",                         value: "Affiche les utilisateurs actuellement blacklistés." },
+        { name: "`*roleadd / *roleremove`",           value: "Ajouter ou retirer un rôle à un membre." },
+      ),
+  },
+
+  securite: {
+    emoji: "🚨",
+    label: "Sécurité",
+    embed: new EmbedBuilder()
+      .setColor(0xe67e22)
+      .setTitle("🚨 Modération — Sécurité")
+      .setDescription("Commandes de protection et de gestion des salons.")
+      .addFields(
+        { name: "`*clear [nombre]`",                  value: "Supprime des messages, jusqu’à 100." },
+        { name: "`*lock` / `*unlock`",                value: "Verrouille ou déverrouille le salon actuel." },
+        { name: "`*lock catégorie` / `*unlock catégorie`", value: "Verrouille ou déverrouille tous les salons de la catégorie actuelle." },
+        { name: "`*fermeture [#salon-temp]`",         value: "Ferme le serveur et masque les salons aux membres, sauf le salon temporaire indiqué." },
+        { name: "`*ouverture`",                       value: "Rouvre le serveur et redonne l’accès aux membres." },
+        { name: "`*antiraid on/off/status`",          value: "Active, désactive ou affiche l’état de l’anti-raid." },
+        { name: "`*antispam on/off/status`",          value: "Active, désactive ou affiche l’état de l’anti-spam du chat." },
         { name: "🚨 Anti-raid",                       value: "Détecte les arrivées massives et expulse les comptes récents lorsqu’il est activé." },
         { name: "💬 Anti-spam",                       value: "Détecte et bloque les envois excessifs de messages lorsqu’il est activé." },
-        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé + warn automatique." },
-        { name: "📊 Hiérarchie",                      value: "👑 Owner > 🎯 Staff > ⚙️ Admin > ⚠️ Abus > 🛡️ Modo\nConfigurable par serveur via `*config set`." },
+        { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé et ajoute un avertissement automatique." },
+        { name: "📊 Hiérarchie",                      value: "👑 Propriétaire / Owner > Co Owner > Yonko > Gestion Staff > Gestion Abus > Modo > Membre" },
       ),
   },
 
@@ -214,7 +225,8 @@ function makePanelEmbed() {
     .setDescription("Clique sur une catégorie pour voir les commandes correspondantes.")
     .addFields(
       { name: "🎮 Jeux",        value: "Loup-Garou, Undercover, Quiz…",          inline: true },
-      { name: "🛡️ Modération",  value: "Sanctions, blacklist, sécurité, lock…",    inline: true },
+      { name: "🛡️ Sanctions",   value: "Ban, mute, warn, blacklist…",              inline: true },
+      { name: "🚨 Sécurité",    value: "Anti-raid, anti-spam, lock…",              inline: true },
       { name: "🛠️ Outils",      value: "Tickets, giveaway, poll, confess…",       inline: true },
       { name: "ℹ️ Utilitaires", value: "Ping, info, say…",                         inline: true },
       { name: "⚙️ Config bot",  value: "Configurer le bot pour ce serveur.",       inline: true },
@@ -225,7 +237,8 @@ function makePanelEmbed() {
 function makePanelRows() {
   const row1 = new ActionRowBuilder<ButtonBuilder>().addComponents(
     new ButtonBuilder().setCustomId("aide_cat_jeux").setLabel("🎮 Jeux").setStyle(ButtonStyle.Success),
-    new ButtonBuilder().setCustomId("aide_cat_moderation").setLabel("🛡️ Modération").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("aide_cat_moderation").setLabel("🛡️ Sanctions").setStyle(ButtonStyle.Danger),
+    new ButtonBuilder().setCustomId("aide_cat_securite").setLabel("🚨 Sécurité").setStyle(ButtonStyle.Danger),
     new ButtonBuilder().setCustomId("aide_cat_outils").setLabel("🛠️ Outils").setStyle(ButtonStyle.Primary),
     new ButtonBuilder().setCustomId("aide_cat_utilitaires").setLabel("ℹ️ Utilitaires").setStyle(ButtonStyle.Secondary),
   );
