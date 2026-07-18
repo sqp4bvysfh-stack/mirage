@@ -1,28 +1,56 @@
+import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
+import { canActOn, isModerator } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 
 export const unmuteCommand: Command = {
   name: "unmute",
-  description: "Retire le mute d'un membre",
+  description: "Retire le mute d’un membre",
   usage: "*unmute @membre",
+
   execute: async (message) => {
-    const member = message.member;
-    if (!member?.permissions.has("ModerateMembers") && !member?.permissions.has("Administrator")) {
-      await message.reply("❌ Tu n'as pas la permission d'utiliser cette commande.");
+    if (!message.guild || !message.member || !isModerator(message.member)) {
+      await message.reply("❌ Tu n’as pas la permission d’utiliser cette commande.");
       return;
     }
 
-    const cible = message.mentions.members?.first();
-    if (!cible) {
-      await message.reply("❌ Mentionne un membre. Ex: `*unmute @membre`");
+    const target = message.mentions.members?.first();
+
+    if (!target) {
+      await message.reply("❌ Mentionne un membre. Exemple : `*unmute @membre`");
       return;
     }
 
-    if (!cible.isCommunicationDisabled()) {
-      await message.reply("❌ Ce membre n'est pas muté.");
+    if (!canActOn(message.member, target)) {
+      await message.reply(
+        "❌ Tu ne peux pas agir sur quelqu’un de ton niveau ou au-dessus de toi.",
+      );
       return;
     }
 
-    await cible.timeout(null, `Unmute par ${message.author.tag}`);
-    await message.reply(`✅ **${cible.user.tag}** a été unmute.`);
+    if (!target.isCommunicationDisabled()) {
+      await message.reply("⚠️ Ce membre n’est pas mute.");
+      return;
+    }
+
+    try {
+      await target.timeout(null, `Unmute par ${message.author.tag}`);
+    } catch (error) {
+      console.error("Erreur unmute :", error);
+      await message.reply("❌ Je n’ai pas réussi à retirer le mute.");
+      return;
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle("🔊 Membre unmute")
+      .addFields(
+        { name: "Membre", value: `${target.user.tag}\n${target}`, inline: true },
+        { name: "Modérateur", value: `${message.author.tag}\n${message.author}`, inline: true },
+      )
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
+    await sendServerLog(message.guild, { embeds: [embed] });
   },
 };
