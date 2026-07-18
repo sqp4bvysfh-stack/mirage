@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator, canActOn } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 
 function parseDuration(str: string): number | null {
   const match = str.match(/^(\d+)(m|h|j)$/);
@@ -60,5 +61,6 @@ export const tempbanCommand: Command = {
       )
       .setTimestamp();
     await message.reply({ embeds: [embed] });
+    await sendServerLog(guild, { embeds: [embed] });
   },
 };
