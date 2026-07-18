@@ -4,7 +4,7 @@ import { canUseBlacklist } from "../utils/modCheck.js";
 import {
   addToBlacklist,
   getBlacklistEntries,
-  getBlacklistEntry,
+  getBlacklistEntry, 
   removeFromBlacklist,
 } from "../utils/blacklist.js";
 
