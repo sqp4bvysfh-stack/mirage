@@ -15,8 +15,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "🎮",
     label: "Jeux",
     embed: new EmbedBuilder()
-      .setColor(0x2ecc71)
-      .setTitle("🎮 Jeux")
+      .setColor(0x6d28d9)
+      .setTitle("🎮 No Chill • Jeux")
       .addFields(
         { name: "`*loupgarou`",                       value: "Lobby Loup-Garou 🐺 — ✅ rejoindre, 🚀 lancer (modo, 3–30 j.)." },
         { name: "`*finpartie`",                       value: "Terminer la partie en cours et retirer les rôles (modo)." },
@@ -26,15 +26,15 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*telephone`",                       value: "Code secret Murder Mystery — via MP." },
         { name: "`*twerk`",                           value: "👀" },
       )
-      .setFooter({ text: "Utilise *aide loupgarou ou *aide undercover pour les détails complets." }),
+      .setFooter({ text: "No Chill • Préfixe : *" }),
   },
 
   moderation: {
     emoji: "🛡️",
     label: "Sanctions",
     embed: new EmbedBuilder()
-      .setColor(0xe74c3c)
-      .setTitle("🛡️ Modération — Sanctions")
+      .setColor(0x6d28d9)
+      .setTitle("🛡️ No Chill • Sanctions")
       .setDescription("Réservées à l’équipe de modération. ⚠️ La hiérarchie du serveur est respectée : tu ne peux pas sanctionner quelqu’un placé au-dessus de toi.")
       .addFields(
         { name: "`*ban @membre [raison]`",            value: "Bannit définitivement." },
@@ -44,8 +44,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*mute @membre 10m [raison]`",       value: "Rend muet temporairement." },
         { name: "`*unmute @membre`",                  value: "Retire le mute." },
         { name: "`*warn @membre [raison]`",           value: "Avertissement. `*warn list @membre` pour l’historique." },
-        { name: "`*jail @membre [raison]`",           value: "Met un membre en jail, lui retire ses rôles et l’isole." },
-        { name: "`*unjail @membre`",                  value: "Libère un membre de jail et lui rend ses rôles." },
+        { name: "`*jail @membre [raison]`",           value: "Sauvegarde ses rôles, l’isole dans la prison et le déplace dans le vocal prison." },
+        { name: "`*unjail @membre`",                  value: "Libère le membre et restaure automatiquement ses anciens rôles." },
         { name: "`*bl @membre [raison]`",             value: "Ajoute définitivement un utilisateur à la blacklist et le bannit." },
         { name: "`*unbl ID`",                         value: "Retire un utilisateur de la blacklist." },
         { name: "`*bl list`",                         value: "Affiche les utilisateurs actuellement blacklistés." },
@@ -57,11 +57,12 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "🚨",
     label: "Sécurité",
     embed: new EmbedBuilder()
-      .setColor(0xe67e22)
-      .setTitle("🚨 Modération — Sécurité")
+      .setColor(0x6d28d9)
+      .setTitle("🚨 No Chill • Sécurité")
       .setDescription("Commandes de protection et de gestion des salons.")
       .addFields(
-        { name: "`*clear [nombre]`",                  value: "Supprime des messages, jusqu’à 100." },
+        { name: "`*clear <1-100>`",                   value: "Supprime le nombre indiqué de messages récents." },
+        { name: "`*clear all`",                     value: "Vide entièrement le salon sans le supprimer ni changer son ID." },
         { name: "`*lock` / `*unlock`",                value: "Verrouille ou déverrouille le salon actuel." },
         { name: "`*lock catégorie` / `*unlock catégorie`", value: "Verrouille ou déverrouille tous les salons de la catégorie actuelle." },
         { name: "`*fermeture [#salon-temp]`",         value: "Ferme le serveur et masque les salons aux membres, sauf le salon temporaire indiqué." },
@@ -71,7 +72,7 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "🚨 Anti-raid",                       value: "Détecte les arrivées massives et expulse les comptes récents lorsqu’il est activé." },
         { name: "💬 Anti-spam",                       value: "Détecte et bloque les envois excessifs de messages lorsqu’il est activé." },
         { name: "🔗 Anti-lien",                       value: "Supprime tout `discord.gg/` non autorisé et ajoute un avertissement automatique." },
-        { name: "📊 Hiérarchie",                      value: "👑 Propriétaire / Owner > Co Owner > Yonko > Gestion Staff > Gestion Abus > Modo > Membre" },
+        { name: "📊 Hiérarchie",                      value: "Propriétaire > Owner > Co Owner > Perm Bot > Gestion Staff > Bvtman > Gestion Modo > Modo > Gestion Surveillant > Surveillants > Supports > Membres > Jail" },
       ),
   },
 
@@ -79,18 +80,18 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "🛠️",
     label: "Outils",
     embed: new EmbedBuilder()
-      .setColor(0xf1c40f)
-      .setTitle("🛠️ Outils")
+      .setColor(0x6d28d9)
+      .setTitle("🛠️ No Chill • Outils")
       .addFields(
         { name: "`*ticket setup`",                       value: "Initialise le panneau de tickets dans ce salon." },
         { name: "`*giveaway <durée> <prix>`",            value: "Lance un giveaway avec conditions (vocal + statut).\nEx : `*giveaway 1h Nitro`  —  Durées : `30m`, `1h`, `2j`." },
         { name: "`*reroll <ID message>`",                value: "Relance le tirage d'un giveaway sans conditions." },
         { name: "`*poll \"question\" \"choix1\" ...`",   value: "Crée un sondage (min 2, max 10 choix)." },
         { name: "`*confess setup #conf #logs`",          value: "Initialise le salon de confessions anonymes." },
-        { name: "`*setup origines`",                     value: "Crée un panel réaction-rôle par pays (max 20 par panel)." },
-        { name: "`*setup origines edit <ID>`",           value: "Ajoute des origines à un panel existant." },
-        { name: "`*boostsetup #annonce #demandes`",      value: "Configure le système boost : annonce auto + demande de rôle perso via formulaire." },
-        { name: "`*photo #salon [emoji]`",               value: "Restreint un salon aux médias uniquement (images/vidéos). Réagit automatiquement avec l'emoji choisi." },
+        { name: "`*setup origines`",                     value: "Crée le panneau réaction-rôle dans le salon Origines fixe." },
+        { name: "`*setup origines edit <ID>`",           value: "Ajoute des origines à un panneau existant. Les données restent après redémarrage." },
+        { name: "`*boostsetup #annonce #demandes`",      value: "Modifie les salons du système boost. Les salons No Chill sont déjà configurés." },
+        { name: "`*photo`",                              value: "Affiche le salon photo fixe. Les médias reçoivent automatiquement la réaction 💜." },
       ),
   },
 
@@ -98,9 +99,9 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "🤖",
     label: "IA",
     embed: new EmbedBuilder()
-      .setColor(0x9b59b6)
-      .setTitle("🤖 IA")
-      .setDescription("Parle avec l'IA du serveur — elle répond comme une vraie personne.\nSon nom se configure via `*config set botName <nom>`.")
+      .setColor(0x6d28d9)
+      .setTitle("🤖 No Chill • IA")
+      .setDescription("Parle avec l'IA du serveur — elle répond comme une vraie personne.\nSon nom se configure via `*config set botName <nom>`. Nom conseillé : **Panamienne**.")
       .addFields(
         { name: "`*ia [message]`",                          value: "Pose une question à l'IA." },
         { name: "`@bot [message]`",                         value: "Mentionne le bot directement dans n'importe quel salon." },
@@ -114,8 +115,8 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "ℹ️",
     label: "Utilitaires",
     embed: new EmbedBuilder()
-      .setColor(0x5865f2)
-      .setTitle("ℹ️ Utilitaires")
+      .setColor(0x6d28d9)
+      .setTitle("ℹ️ No Chill • Utilitaires")
       .addFields(
         { name: "`*ping`",               value: "Affiche la latence du bot." },
         { name: "`*info`",               value: "Infos du serveur." },
@@ -134,20 +135,20 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "👑",
     label: "Owner",
     embed: new EmbedBuilder()
-      .setColor(0xf1c40f)
-      .setTitle("👑 Commandes Owner")
+      .setColor(0x6d28d9)
+      .setTitle("👑 No Chill • Owner")
       .setDescription("Réservées exclusivement au propriétaire du bot.")
       .addFields(
         { name: "`*massban @role [raison]`",  value: "Bannit tous les membres d'un rôle en une fois." },
         { name: "`*masskick @role [raison]`", value: "Kick tous les membres d'un rôle en une fois." },
         { name: "`*delsalon #salon1 ...`",    value: "Supprime les salons mentionnés (ou le salon actuel)." },
         { name: "`*broadcast message`",        value: "Envoie un message dans tous les salons du serveur." },
-        { name: "`*parle message`",            value: "Envoie un message dans **tous** les salons de **tous** les serveurs." },
+        { name: "`*parle message`",            value: "Envoie un message dans tous les salons de No Chill." },
         { name: "`*parle CHANNEL_ID msg`",     value: "Envoie un message dans un salon précis (fonctionne en DM au bot)." },
-        { name: "`*botprofil pseudo <nom>`",   value: "Change le pseudo du bot sur ce serveur uniquement." },
-        { name: "`*botprofil avatar <url>`",   value: "Change l'avatar du bot sur ce serveur (GIF supporté)." },
-        { name: "`*botprofil banniere <url>`", value: "Change la bannière du bot sur ce serveur (GIF supporté)." },
-        { name: "`*botprofil reset`",          value: "Remet le profil par défaut sur ce serveur." },
+        { name: "`*botprofil pseudo <nom>`",   value: "Change le pseudo du bot sur No Chill." },
+        { name: "`*botprofil avatar <url>`",   value: "Change l'avatar du bot (GIF supporté)." },
+        { name: "`*botprofil banniere <url>`", value: "Change la bannière du bot (GIF supporté)." },
+        { name: "`*botprofil reset`",          value: "Remet le profil par défaut." },
       ),
   },
 
@@ -155,64 +156,56 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
     emoji: "⚙️",
     label: "Config bot",
     embed: new EmbedBuilder()
-      .setColor(0x95a5a6)
-      .setTitle("⚙️ Configuration du bot")
+      .setColor(0x6d28d9)
+      .setTitle("⚙️ No Chill • Configuration")
       .setDescription(
-        "Toute la configuration est **par serveur** et s'applique immédiatement.\n" +
-        "Commandes réservées aux modérateurs.\n\n" +
-        "`*config list` — voir la config actuelle\n" +
-        "`*config set <clé> <valeur>` — modifier une valeur\n\n" +
-        "La valeur peut être une **mention** (`@rôle`, `#salon`) ou un **ID brut**."
+        "La configuration concerne uniquement **No Chill** et s’applique immédiatement.\n" +
+        "Commandes réservées à l’équipe autorisée.\n\n" +
+        "`*config list` — afficher la configuration actuelle\n" +
+        "`*config set <clé> <valeur>` — modifier une valeur"
       )
       .addFields(
         {
-          name: "🛡️ Rôles de modération",
-          value:
-            "`modoRole` — Rôle modérateur\n" +
-            "`abuseRole` — Rôle gestion abus\n" +
-            "`staffRole` — Rôle staff\n" +
-            "`ownerUser` — ID de l'owner (pour tickets)\n" +
-            "`membresRole` — Rôle membres (lock / fermeture)",
+          name: "🤖 IA",
+          value: "`botName` — Nom affiché par l’IA",
         },
         {
           name: "📢 Salons automatiques",
           value:
-            "`welcomeChannel` — Salon de bienvenue\n" +
-            "`giveawayChannel` — Salon giveaway\n" +
-            "`boostChannel` — Salon annonce boost\n" +
-            "`demandeChannel` — Salon demandes rôle perso",
+            "`welcomeChannel` — Bienvenue\n" +
+            "`giveawayChannel` — Giveaways\n" +
+            "`boostChannel` — Annonces boost\n" +
+            "`demandeChannel` — Demandes boost",
         },
         {
           name: "🕵️ Confessions",
           value:
-            "`confessionChannel` — Salon où les confessions apparaissent\n" +
-            "`confessionLog` — Salon logs des confessions (modo uniquement)",
+            "`confessionChannel` — Confessions publiques\n" +
+            "`confessionLog` — Logs privés des confessions",
         },
         {
           name: "🐺 Loup-Garou",
           value:
-            "`lgRole` — Rôle décoratif Loup-Garou\n" +
+            "`lgRole` — Rôle Loup-Garou\n" +
             "`lgSalon` — Salon Loup-Garou",
         },
         {
-          name: "🤖 IA & Divers",
+          name: "🛡️ Divers",
           value:
-            "`botName` — Nom de l'IA (affiché dans ses réponses)\n" +
-            "`antiPubRole` — Rôle à mentionner dans les avertissements anti-pub\n" +
-            "`logsChannel` — Salon de logs (membres, messages, vocal, rôles, serveur)",
+            "`membresRole` — Rôle Membres utilisé par lock/fermeture\n" +
+            "`antiPubRole` — Rôle mentionné par l’anti-pub",
         },
         {
-          name: "📖 Exemple complet",
+          name: "📖 Exemple",
           value:
             "```\n" +
-            "*config set modoRole @Modérateur\n" +
+            "*config set botName Panamienne\n" +
             "*config set welcomeChannel #bienvenue\n" +
-            "*config set botName Bissapienne\n" +
             "*config list\n" +
             "```",
         },
       )
-      .setFooter({ text: "Si une valeur n'est pas configurée, le bot utilise les valeurs par défaut codées en dur." }),
+      .setFooter({ text: "No Chill • Configuration unique" }),
   },
 };
 
@@ -220,18 +213,18 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
 
 function makePanelEmbed() {
   return new EmbedBuilder()
-    .setColor(0x5865f2)
-    .setTitle("📖 Aide — Bot")
-    .setDescription("Clique sur une catégorie pour voir les commandes correspondantes.")
+    .setColor(0x6d28d9)
+    .setTitle("💜 No Chill • Centre d’aide")
+    .setDescription("Choisis une catégorie pour afficher ses commandes.\nLes réponses des boutons sont visibles uniquement par toi.")
     .addFields(
       { name: "🎮 Jeux",        value: "Loup-Garou, Undercover, Quiz…",          inline: true },
-      { name: "🛡️ Sanctions",   value: "Ban, mute, warn, blacklist…",              inline: true },
-      { name: "🚨 Sécurité",    value: "Anti-raid, anti-spam, lock…",              inline: true },
+      { name: "🛡️ Sanctions",   value: "Ban, mute, jail, blacklist…",               inline: true },
+      { name: "🚨 Sécurité",    value: "Anti-raid, anti-spam, clear, lock…",         inline: true },
       { name: "🛠️ Outils",      value: "Tickets, giveaway, poll, confess…",       inline: true },
       { name: "ℹ️ Utilitaires", value: "Ping, info, say…",                         inline: true },
       { name: "⚙️ Config bot",  value: "Configurer le bot pour ce serveur.",       inline: true },
     )
-    .setFooter({ text: "Préfixe : *  —  Serveur Mirage" });
+    .setFooter({ text: "No Chill • Préfixe : *" });
 }
 
 function makePanelRows() {
