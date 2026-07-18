@@ -171,13 +171,3 @@ export const lockCommand: Command = {
     await executeLockCommand(message, args, false);
   },
 };
-
-export const unlockCommand: Command = {
-  name: "unlock",
-  description: "Déverrouille un salon ou sa catégorie",
-  usage: "*unlock [catégorie]",
-
-  execute: async (message, args) => {
-    await executeLockCommand(message, args, true);
-  },
-};
