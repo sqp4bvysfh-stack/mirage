@@ -1,168 +1,300 @@
 import {
   ChannelType,
-  PermissionsBitField,
-  Role,
+  EmbedBuilder,
+  type GuildMember,
+  type Role,
 } from "discord.js";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 
 import type { Command } from "../types.js";
+import {
+  canActOn,
+  isModerator,
+  JAIL_ROLE_ID,
+} from "../utils/modCheck.js";
 
-const jailRoleConfig = new Map<string, string>();
+interface JailRecord {
+  roles: string[];
+  moderatorId: string;
+  reason: string;
+  jailedAt: number;
+}
 
-const waitingRole = new Set<string>();
+type JailStore = Record<string, JailRecord>;
+
+const JAIL_FILE = (() => {
+  try {
+    if (!existsSync("/data")) mkdirSync("/data", { recursive: true });
+    return "/data/jail-records.json";
+  } catch {
+    return join(process.cwd(), "jail-records.json");
+  }
+})();
+
+let jailRecords: JailStore = {};
+
+function loadJailRecords(): void {
+  try {
+    if (!existsSync(JAIL_FILE)) return;
+    jailRecords = JSON.parse(readFileSync(JAIL_FILE, "utf-8")) as JailStore;
+  } catch (error) {
+    console.error("❌ Impossible de charger jail-records.json :", error);
+    jailRecords = {};
+  }
+}
+
+function saveJailRecords(): void {
+  try {
+    writeFileSync(
+      JAIL_FILE,
+      JSON.stringify(jailRecords, null, 2),
+      "utf-8",
+    );
+  } catch (error) {
+    console.error("❌ Impossible de sauvegarder jail-records.json :", error);
+  }
+}
+
+loadJailRecords();
+
+function getTarget(message: any, rawId?: string): Promise<GuildMember | null> {
+  const mentioned = message.mentions.members?.first();
+  if (mentioned) return Promise.resolve(mentioned);
+
+  const userId = rawId?.replace(/[<@!>]/g, "");
+  if (!userId) return Promise.resolve(null);
+
+  return message.guild.members.fetch(userId).catch(() => null);
+}
+
+function getRestorableRoles(member: GuildMember): Role[] {
+  const botMember = member.guild.members.me;
+  if (!botMember) return [];
+
+  return member.roles.cache
+    .filter((role) =>
+      role.id !== member.guild.id &&
+      role.id !== JAIL_ROLE_ID &&
+      !role.managed &&
+      role.position < botMember.roles.highest.position
+    )
+    .sort((a, b) => b.position - a.position)
+    .map((role) => role);
+}
+
+function findPrisonTextChannel(guild: any) {
+  return guild.channels.cache.find(
+    (channel: any) =>
+      channel.type === ChannelType.GuildText &&
+      channel.name.toLowerCase().includes("prison"),
+  );
+}
+
+function findPrisonVoiceChannel(guild: any) {
+  return guild.channels.cache.find(
+    (channel: any) =>
+      channel.type === ChannelType.GuildVoice &&
+      channel.name.toLowerCase().includes("prison"),
+  );
+}
+
+async function ensureJailPermissions(guild: any): Promise<void> {
+  const prisonText = findPrisonTextChannel(guild);
+  const prisonVoice = findPrisonVoiceChannel(guild);
+
+  for (const channel of guild.channels.cache.values()) {
+    if (!("permissionOverwrites" in channel)) continue;
+
+    const isPrisonChannel =
+      channel.id === prisonText?.id ||
+      channel.id === prisonVoice?.id;
+
+    await channel.permissionOverwrites.edit(
+      JAIL_ROLE_ID,
+      isPrisonChannel
+        ? {
+            ViewChannel: true,
+            SendMessages: channel.type === ChannelType.GuildText ? true : null,
+            Connect: channel.type === ChannelType.GuildVoice ? true : null,
+            Speak: channel.type === ChannelType.GuildVoice ? true : null,
+          }
+        : {
+            ViewChannel: false,
+          },
+    ).catch((error: unknown) => {
+      console.error(`Erreur permissions Jail sur ${channel.id}:`, error);
+    });
+  }
+}
 
 export const jailCommand: Command = {
   name: "jail",
-  description: "Met un membre en prison",
-  usage: "*jail @user",
+  description: "Met un membre en prison et sauvegarde ses rôles",
+  usage: "*jail @membre [raison]",
 
   execute: async (message, args) => {
+    if (!message.guild || !message.member) return;
 
-    if (!message.guild) return;
-
-    const isAdmin =
-      message.member?.permissions.has("Administrator");
-
-    if (!isAdmin) {
-      await message.reply("❌ admin uniquement");
+    if (!isModerator(message.member)) {
+      await message.reply("❌ Tu n’as pas la permission d’utiliser cette commande.");
       return;
     }
 
-    // ─────────────────────────────
-    // SETUP ROLE
-    // ─────────────────────────────
-    const existingRoleId = jailRoleConfig.get(message.guild.id);
-
-    if (!existingRoleId) {
-
-      if (waitingRole.has(message.guild.id)) return;
-
-      waitingRole.add(message.guild.id);
-
-      await message.reply(
-        "🔒 Envoie l'ID du rôle jail à utiliser."
-      );
-
-      const collected = await message.channel.awaitMessages({
-        filter: (m) => m.author.id === message.author.id,
-        max: 1,
-        time: 60_000,
-      }).catch(() => null);
-
-      waitingRole.delete(message.guild.id);
-
-      const response = collected?.first();
-      if (!response) {
-        await message.reply("❌ temps écoulé");
-        return;
-      }
-
-      const roleId = response.content.trim();
-
-      const role = message.guild.roles.cache.get(roleId);
-
-      if (!role) {
-        await message.reply("❌ rôle introuvable");
-        return;
-      }
-
-      jailRoleConfig.set(message.guild.id, roleId);
-
-      // ─────────────────────────────
-      // CONFIG CHANNELS
-      // ─────────────────────────────
-      const prisonChannel = message.guild.channels.cache.find(
-        c =>
-          c.type === ChannelType.GuildText &&
-          c.name.toLowerCase().includes("prison")
-      );
-
-      for (const [, channel] of message.guild.channels.cache) {
-
-        if (!channel.isTextBased()) continue;
-
-        // prison
-        if (prisonChannel && channel.id === prisonChannel.id) {
-
-          await channel.permissionOverwrites.edit(roleId, {
-            ViewChannel: true,
-            SendMessages: true,
-          }).catch(() => {});
-
-        } else {
-
-          await channel.permissionOverwrites.edit(roleId, {
-            SendMessages: false,
-          }).catch(() => {});
-        }
-      }
-
-      await message.reply(
-        `✅ rôle jail configuré : ${role.name}`
-      );
-
-      return;
-    }
-
-    // ─────────────────────────────
-    // JAIL USER
-    // ─────────────────────────────
-    const member =
-      message.mentions.members?.first() ||
-      await message.guild.members.fetch(args[0]).catch(() => null);
+    const member = await getTarget(message, args[0]);
 
     if (!member) {
-      await message.reply("❌ membre introuvable");
+      await message.reply("❌ Membre introuvable.");
       return;
     }
 
-    const role = message.guild.roles.cache.get(existingRoleId);
-
-    if (!role) {
-      await message.reply("❌ rôle jail supprimé");
-      jailRoleConfig.delete(message.guild.id);
+    if (!canActOn(message.member, member)) {
+      await message.reply(
+        "❌ Tu ne peux pas emprisonner ce membre à cause de la hiérarchie.",
+      );
       return;
     }
 
-    await member.roles.add(role).catch(() => {});
+    if (member.roles.cache.has(JAIL_ROLE_ID)) {
+      await message.reply("⚠️ Ce membre est déjà en prison.");
+      return;
+    }
 
-    await message.reply(
-      `🔒 ${member.user.tag} a été envoyé en prison`
+    const jailRole = message.guild.roles.cache.get(JAIL_ROLE_ID);
+    if (!jailRole) {
+      await message.reply("❌ Le rôle Jail est introuvable.");
+      return;
+    }
+
+    const rolesToRemove = getRestorableRoles(member);
+    const reason = args.slice(1).join(" ").trim() || "Aucune raison précisée";
+
+    jailRecords[member.id] = {
+      roles: rolesToRemove.map((role) => role.id),
+      moderatorId: message.author.id,
+      reason,
+      jailedAt: Date.now(),
+    };
+    saveJailRecords();
+
+    await ensureJailPermissions(message.guild);
+
+    if (rolesToRemove.length > 0) {
+      await member.roles.remove(
+        rolesToRemove,
+        `Jail par ${message.author.tag} : ${reason}`,
+      );
+    }
+
+    await member.roles.add(
+      jailRole,
+      `Jail par ${message.author.tag} : ${reason}`,
     );
+
+    const prisonVoice = findPrisonVoiceChannel(message.guild);
+    if (member.voice.channel && prisonVoice) {
+      await member.voice.setChannel(prisonVoice).catch(() => {});
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x6d28d9)
+      .setTitle("🔒 Membre emprisonné")
+      .addFields(
+        { name: "Membre", value: `${member}`, inline: true },
+        { name: "Modérateur", value: `${message.author}`, inline: true },
+        { name: "Raison", value: reason },
+        {
+          name: "Rôles sauvegardés",
+          value: String(rolesToRemove.length),
+          inline: true,
+        },
+      )
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
   },
 };
 
-// ─────────────────────────────
-// UNJAIL
-// ─────────────────────────────
 export const unjailCommand: Command = {
   name: "unjail",
-  description: "Retire la prison",
-  usage: "*unjail @user",
+  description: "Libère un membre et restaure ses rôles",
+  usage: "*unjail @membre",
 
   execute: async (message, args) => {
+    if (!message.guild || !message.member) return;
 
-    if (!message.guild) return;
-
-    const roleId = jailRoleConfig.get(message.guild.id);
-
-    if (!roleId) {
-      await message.reply("❌ aucun rôle jail configuré");
+    if (!isModerator(message.member)) {
+      await message.reply("❌ Tu n’as pas la permission d’utiliser cette commande.");
       return;
     }
 
-    const member =
-      message.mentions.members?.first() ||
-      await message.guild.members.fetch(args[0]).catch(() => null);
+    const member = await getTarget(message, args[0]);
 
     if (!member) {
-      await message.reply("❌ membre introuvable");
+      await message.reply("❌ Membre introuvable.");
       return;
     }
 
-    await member.roles.remove(roleId).catch(() => {});
+    if (!member.roles.cache.has(JAIL_ROLE_ID)) {
+      await message.reply("⚠️ Ce membre n’est pas en prison.");
+      return;
+    }
 
-    await message.reply(
-      `🔓 ${member.user.tag} est sorti de prison`
+    const record = jailRecords[member.id];
+
+    await member.roles.remove(
+      JAIL_ROLE_ID,
+      `Libération par ${message.author.tag}`,
     );
+
+    let restored = 0;
+    let failed = 0;
+
+    if (record) {
+      const botMember = message.guild.members.me;
+
+      for (const roleId of record.roles) {
+        const role = message.guild.roles.cache.get(roleId);
+
+        if (
+          !role ||
+          role.managed ||
+          !botMember ||
+          role.position >= botMember.roles.highest.position
+        ) {
+          failed += 1;
+          continue;
+        }
+
+        const success = await member.roles
+          .add(role, `Restauration après unjail par ${message.author.tag}`)
+          .then(() => true)
+          .catch(() => false);
+
+        if (success) restored += 1;
+        else failed += 1;
+      }
+
+      delete jailRecords[member.id];
+      saveJailRecords();
+    }
+
+    const embed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle("🔓 Membre libéré")
+      .addFields(
+        { name: "Membre", value: `${member}`, inline: true },
+        { name: "Modérateur", value: `${message.author}`, inline: true },
+        { name: "Rôles restaurés", value: String(restored), inline: true },
+        { name: "Échecs", value: String(failed), inline: true },
+      )
+      .setTimestamp();
+
+    await message.reply({ embeds: [embed] });
   },
 };
