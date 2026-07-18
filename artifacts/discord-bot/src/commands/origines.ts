@@ -1,9 +1,66 @@
 import { EmbedBuilder, type Message } from "discord.js";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
+type OrigineEntry = { emoji: string; roleId: string };
+type OriginesStore = Record<string, OrigineEntry[]>;
+
+const ORIGINES_FILE = (() => {
+  try {
+    if (!existsSync("/data")) mkdirSync("/data", { recursive: true });
+    return "/data/origines-panels.json";
+  } catch {
+    return join(process.cwd(), "origines-panels.json");
+  }
+})();
+
+const ORIGINES_CHANNEL_ID = "1528124060083687616";
+
 // ─── État partagé — Map panelId → config ─────────────────────────────────
-export const originesPanels = new Map<string, { emoji: string; roleId: string }[]>();
+export const originesPanels = new Map<string, OrigineEntry[]>();
+
+function loadOriginesPanels(): void {
+  try {
+    if (!existsSync(ORIGINES_FILE)) return;
+
+    const parsed = JSON.parse(
+      readFileSync(ORIGINES_FILE, "utf-8"),
+    ) as OriginesStore;
+
+    for (const [panelId, config] of Object.entries(parsed)) {
+      originesPanels.set(panelId, config);
+    }
+  } catch (error) {
+    console.error("❌ Impossible de charger les panels d’origines :", error);
+  }
+}
+
+function saveOriginesPanels(): void {
+  const data: OriginesStore = {};
+
+  for (const [panelId, config] of originesPanels) {
+    data[panelId] = config;
+  }
+
+  try {
+    writeFileSync(
+      ORIGINES_FILE,
+      JSON.stringify(data, null, 2),
+      "utf-8",
+    );
+  } catch (error) {
+    console.error("❌ Impossible de sauvegarder les panels d’origines :", error);
+  }
+}
+
+loadOriginesPanels();
 
 // ─── Helpers ──────────────────────────────────────────────────────────────
 function buildEmbed(config: { emoji: string; roleId: string }[]): EmbedBuilder {
@@ -62,7 +119,7 @@ export const originesCommand: Command = {
 
       const existing = originesPanels.get(panelId);
       if (!existing) {
-        await message.reply("❌ Panel introuvable. L'ID est incorrect ou le bot a redémarré depuis sa création.");
+        await message.reply("❌ Panel introuvable. Vérifie l’ID du message.");
         return;
       }
 
@@ -73,7 +130,14 @@ export const originesCommand: Command = {
       }
 
       // Récupérer le message du panel
-      const panelMsg = await message.channel.messages.fetch(panelId).catch(() => null);
+      const targetChannel = message.guild?.channels.cache.get(ORIGINES_CHANNEL_ID);
+
+      if (!targetChannel || !targetChannel.isTextBased()) {
+        await message.reply("❌ Le salon Origines configuré est introuvable.");
+        return;
+      }
+
+      const panelMsg = await targetChannel.messages.fetch(panelId).catch(() => null);
       if (!panelMsg) {
         await message.reply("❌ Impossible de récupérer le message. Vérifie que tu es dans le bon salon.");
         return;
@@ -116,6 +180,7 @@ export const originesCommand: Command = {
 
       const updated = [...existing, ...toAdd];
       originesPanels.set(panelId, updated);
+      saveOriginesPanels();
 
       // Mettre à jour l'embed
       await panelMsg.edit({ embeds: [buildEmbed(updated)] });
@@ -155,9 +220,17 @@ export const originesCommand: Command = {
     }
 
     const config = roles.map(r => ({ emoji: r.name, roleId: r.id }));
-    const panel  = await message.channel.send({ embeds: [buildEmbed(config)] });
+    const targetChannel = message.guild?.channels.cache.get(ORIGINES_CHANNEL_ID);
+
+    if (!targetChannel || !targetChannel.isTextBased()) {
+      await message.reply("❌ Le salon Origines configuré est introuvable.");
+      return;
+    }
+
+    const panel = await targetChannel.send({ embeds: [buildEmbed(config)] });
 
     originesPanels.set(panel.id, config);
+    saveOriginesPanels();
 
     for (const { emoji } of config) {
       await panel.react(emoji).catch(() => {});
