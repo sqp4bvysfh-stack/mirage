@@ -1,3 +1,6 @@
+
+
+
 import { createServer } from "node:http";
 import {
   Client,
@@ -321,19 +324,10 @@ client.on(Events.MessageCreate, async (message: Message) => {
   if (await handleAntiSpam(message)) return;
 
   // ── PHOTO SYSTEM ─────────────────────────────────────────────────────────
-  handlePhotoSystem(message);
-
-  const photoEmoji = getPhotoEmoji(message.channel.id);
-  if (photoEmoji) {
-    const hasMedia = message.attachments.some(att =>
-      (att.contentType ?? "").startsWith("image/") ||
-      (att.contentType ?? "").startsWith("video/")
-    );
-    if (!hasMedia) {
-      await message.delete().catch(() => {});
-      return;
-    }
-    await message.react(photoEmoji).catch(() => {});
+  // Si le salon est configuré en mode photo, photo.ts gère seul
+  // la suppression des messages sans média et la réaction automatique.
+  if (getPhotoEmoji(message.channel.id)) {
+    await handlePhotoSystem(message);
     return;
   }
 
