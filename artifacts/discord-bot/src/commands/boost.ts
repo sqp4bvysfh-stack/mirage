@@ -15,6 +15,7 @@ import {
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 import { getConfig, setConfig } from "../utils/serverConfig.js";
+import { sendServerLog } from "../utils/logs.js";
 
 // ─── Détection du boost ───────────────────────────────────────────────────
 export async function handleBoostMember(
@@ -53,6 +54,7 @@ export async function handleBoostMember(
   );
 
   await channel.send({ embeds: [embed], components: [row] });
+  await sendServerLog(newMember.guild, { embeds: [embed] });
 }
 
 // ─── Gestion des interactions boost ──────────────────────────────────────
@@ -122,6 +124,9 @@ export async function handleBoostInteraction(interaction: Interaction): Promise<
       .setTimestamp();
 
     await demandeChannel.send({ embeds: [recap] });
+    if (interaction.guild) {
+      await sendServerLog(interaction.guild, { embeds: [recap] });
+    }
     return;
   }
 }
@@ -152,5 +157,17 @@ export const boostSetupCommand: Command = {
     await message.reply(
       `✅ Système de boost configuré !\n📢 Annonces boost → ${annonce}\n📋 Demandes rôle perso → ${demandes}`
     );
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0xff73fa)
+      .setTitle("⚙️ Système de boost configuré")
+      .addFields(
+        { name: "Annonces", value: `${annonce}`, inline: true },
+        { name: "Demandes", value: `${demandes}`, inline: true },
+        { name: "Par", value: `${message.author}`, inline: true },
+      )
+      .setTimestamp();
+
+    await sendServerLog(message.guild!, { embeds: [logEmbed] });
   },
 };
