@@ -60,6 +60,8 @@ import { blCommand, unblCommand } from "./commands/blacklist.js";
 import { getBlacklistEntry } from "./utils/blacklist.js";
 import { antiraidCommand } from "./commands/antiraid.js";
 import { isAntiRaidEnabled } from "./utils/antiraid.js";
+import { antispamCommand } from "./commands/antispam.js";
+import { handleAntiSpam } from "./utils/antispam.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -129,6 +131,7 @@ for (const cmd of [
   blCommand,
   unblCommand,
   antiraidCommand,
+  antispamCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -313,6 +316,9 @@ client.on(Events.MessageCreate, async (message: Message) => {
   if (!message.guild || message.guild.id !== MAIN_GUILD_ID) return;
 
   incrementMessages(message.guild.id);
+
+  // ── ANTI-SPAM ──────────────────────────────────────────────────────────
+  if (await handleAntiSpam(message)) return;
 
   // ── PHOTO SYSTEM ─────────────────────────────────────────────────────────
   handlePhotoSystem(message);
