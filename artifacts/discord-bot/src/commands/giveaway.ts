@@ -3,6 +3,7 @@ import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
 import { getConfig } from "../utils/serverConfig.js";
+import { sendServerLog } from "../utils/logs.js";
 const DEFAULT_GIVEAWAY_CHANNEL = "1500134760314572810";
 
 function parseDuration(str: string): number | null {
@@ -70,6 +71,19 @@ export const giveawayCommand: Command = {
 
     const giveawayMsg = await message.channel.send({ embeds: [embed] });
     await giveawayMsg.react("🎉");
+
+    const startLog = new EmbedBuilder()
+      .setColor(0xf1c40f)
+      .setTitle("🎉 Giveaway lancé")
+      .addFields(
+        { name: "Prix", value: prix, inline: true },
+        { name: "Durée", value: formatDuration(duration), inline: true },
+        { name: "Organisateur", value: `${message.author}`, inline: true },
+        { name: "Message", value: `[Ouvrir](${giveawayMsg.url})` },
+      )
+      .setTimestamp();
+
+    await sendServerLog(message.guild!, { embeds: [startLog] });
     await message.delete().catch(() => {});
 
     setTimeout(async () => {
@@ -118,6 +132,7 @@ export const giveawayCommand: Command = {
 
         await fetchedMsg.edit({ embeds: [endEmbed] });
         await message.channel.send({ embeds: [endEmbed], content: `🎊 Félicitations <@${gagnant.id}> ! Tu as gagné **${prix}** !` });
+        await sendServerLog(message.guild!, { embeds: [endEmbed] });
 
       } catch (err) {
         console.error("Erreur giveaway:", err);
@@ -295,5 +310,17 @@ export const rerollCommand: Command = {
 
     const gagnant = candidates.random();
     await message.channel.send(`🎊 Nouveau gagnant : <@${gagnant!.id}> !`);
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle("🔄 Giveaway reroll")
+      .addFields(
+        { name: "Nouveau gagnant", value: `<@${gagnant!.id}>`, inline: true },
+        { name: "Par", value: `${message.author}`, inline: true },
+        { name: "Message", value: `[Ouvrir](${msg.url})`, inline: false },
+      )
+      .setTimestamp();
+
+    await sendServerLog(message.guild!, { embeds: [logEmbed] });
   },
 };
