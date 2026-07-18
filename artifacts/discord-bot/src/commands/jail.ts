@@ -13,6 +13,7 @@ import {
 import { join } from "node:path";
 
 import type { Command } from "../types.js";
+import { sendServerLog } from "../utils/logs.js";
 import {
   canActOn,
   isModerator,
@@ -232,6 +233,7 @@ export const jailCommand: Command = {
       .setTimestamp();
 
     await message.reply({ embeds: [embed] });
+    await sendServerLog(message.guild, { embeds: [embed] });
   },
 };
 
@@ -311,5 +313,6 @@ export const unjailCommand: Command = {
       .setTimestamp();
 
     await message.reply({ embeds: [embed] });
+    await sendServerLog(message.guild, { embeds: [embed] });
   },
 };
