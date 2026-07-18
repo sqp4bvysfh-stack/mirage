@@ -1,10 +1,11 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 import { canUseBlacklist } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 import {
   addToBlacklist,
   getBlacklistEntries,
-  getBlacklistEntry, 
+  getBlacklistEntry,
   removeFromBlacklist,
 } from "../utils/blacklist.js";
 
@@ -131,6 +132,7 @@ export const blCommand: Command = {
       .setTimestamp();
 
     await message.reply({ embeds: [embed] });
+    await sendServerLog(message.guild, { embeds: [embed] });
   },
 };
 
@@ -169,5 +171,17 @@ export const unblCommand: Command = {
       `✅ <@${userId}> (\`${userId}\`) a été retiré de la blacklist` +
       (unbanned ? " et débanni." : "."),
     );
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0x2ecc71)
+      .setTitle("✅ Utilisateur retiré de la blacklist")
+      .addFields(
+        { name: "Utilisateur", value: `<@${userId}>\n\`${userId}\``, inline: true },
+        { name: "Par", value: `${message.author}\n${message.author.tag}`, inline: true },
+        { name: "Débanni", value: unbanned ? "Oui" : "Déjà débanni", inline: true },
+      )
+      .setTimestamp();
+
+    await sendServerLog(message.guild, { embeds: [logEmbed] });
   },
 };
