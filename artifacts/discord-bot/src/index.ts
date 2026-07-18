@@ -68,6 +68,11 @@ import {
   handleProfilReactionAdd,
   handleProfilReactionRemove,
 } from "./commands/profil.js";
+import {
+  verificationCommand,
+  handleVerificationJoin,
+  handleVerificationInteraction,
+} from "./commands/verification.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -190,6 +195,8 @@ const raidMode       = new Set<string>();
 client.on(Events.GuildMemberAdd, async (member) => {
   if (member.guild.id !== MAIN_GUILD_ID) return;
 
+  await handleVerificationJoin(member);
+
   const blacklistEntry = getBlacklistEntry(member.id);
   if (blacklistEntry) {
     await member.ban({
@@ -280,6 +287,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await handleTicketInteraction(interaction);
     await handleAideInteraction(interaction);
     await handleBoostInteraction(interaction);
+    await handleVerificationInteraction(interaction);
   } catch (err) {
     console.error("Erreur interaction:", err);
   }
