@@ -1,6 +1,7 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator, canActOn } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 
 export const kickCommand: Command = {
   name: "kick",
@@ -36,5 +37,8 @@ export const kickCommand: Command = {
       )
       .setTimestamp();
     await message.reply({ embeds: [embed] });
+    if (message.guild) {
+      await sendServerLog(message.guild, { embeds: [embed] });
+    }
   },
 };
