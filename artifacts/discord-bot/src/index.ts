@@ -62,6 +62,7 @@ import { antiraidCommand } from "./commands/antiraid.js";
 import { isAntiRaidEnabled } from "./utils/antiraid.js";
 import { antispamCommand } from "./commands/antispam.js";
 import { handleAntiSpam } from "./utils/antispam.js";
+import { recrutementCommand } from "./commands/recrutement.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -129,6 +130,7 @@ for (const cmd of [
   unjailCommand,
   photoCommand,
   blCommand,
+  recrutementCommand,
   unblCommand,
   antiraidCommand,
   antispamCommand,
