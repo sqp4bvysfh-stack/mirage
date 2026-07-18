@@ -3,8 +3,8 @@ import type { Message, User, TextChannel } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
-const DECORATIF_ROLE_ID = "1500158112831897630";
-const SALON_LOUPS_ID = "1500158423864442930";
+const DECORATIF_ROLE_ID = "1528152268485034218";
+const SALON_LOUPS_ID = "1528108478416031866";
 
 const ROLES = {
   VILLAGEOIS:    { nom: "🧑‍🌾 Villageois",      camp: "Village",           couleur: 0x3498db, description: "Tu es un simple villageois. Tu n'as aucun pouvoir spécial, mais ta force réside dans ton observation et ta persuasion. Chaque jour, vote pour éliminer les suspects et débarrasser le village des Loups-Garous !" },
