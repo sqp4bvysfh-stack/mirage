@@ -58,6 +58,8 @@ import { jailCommand, unjailCommand } from "./commands/jail.js";
 import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
 import { blCommand, unblCommand } from "./commands/blacklist.js";
 import { getBlacklistEntry } from "./utils/blacklist.js";
+import { antiraidCommand } from "./commands/antiraid.js";
+import { isAntiRaidEnabled } from "./utils/antiraid.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -126,6 +128,7 @@ for (const cmd of [
   photoCommand,
   blCommand,
   unblCommand,
+  antiraidCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -186,6 +189,8 @@ client.on(Events.GuildMemberAdd, async (member) => {
     });
     return;
   }
+
+  if (!isAntiRaidEnabled()) return;
 
   const guildId = member.guild.id;
   const now     = Date.now();
