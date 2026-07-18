@@ -1,6 +1,8 @@
 import { EmbedBuilder } from "discord.js";
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
+import { canActOn } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 
 const warnings = new Map<string, { raison: string; date: string }[]>();
 
@@ -144,6 +146,14 @@ export const warnCommand: Command = {
       return;
     }
 
+    const targetMember = message.guild?.members.cache.get(target.id);
+    if (!targetMember || !canActOn(message.member, targetMember)) {
+      await message.reply(
+        "❌ Tu ne peux pas avertir quelqu’un de ton niveau ou au-dessus de toi.",
+      );
+      return;
+    }
+
     const raison = args.slice(1).join(" ") || "Aucune raison fournie";
     const date = new Date().toLocaleDateString("fr-FR");
     const userWarns = warnings.get(target.id) ?? [];
@@ -173,6 +183,10 @@ export const warnCommand: Command = {
     }
 
     await message.reply({ embeds: [embed] });
+
+    if (message.guild) {
+      await sendServerLog(message.guild, { embeds: [embed] });
+    }
 
     // Application de la sanction
     await appliquerSanction(message, target, warnCount, raison);
