@@ -56,6 +56,8 @@ import { serverprofileCommand } from "./commands/serverprofile.js";
 import { botprofilCommand } from "./commands/botprofil.js";
 import { jailCommand, unjailCommand } from "./commands/jail.js";
 import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
+import { blCommand, unblCommand } from "./commands/blacklist.js";
+import { getBlacklistEntry } from "./utils/blacklist.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -122,6 +124,8 @@ for (const cmd of [
   jailCommand,
   unjailCommand,
   photoCommand,
+  blCommand,
+  unblCommand,
 ]) {
   commands.set(cmd.name, cmd);
 }
@@ -172,6 +176,17 @@ const raidMode       = new Set<string>();
 client.on(Events.GuildMemberAdd, async (member) => {
   if (member.guild.id !== MAIN_GUILD_ID) return;
 
+  const blacklistEntry = getBlacklistEntry(member.id);
+  if (blacklistEntry) {
+    await member.ban({
+      deleteMessageSeconds: 60 * 60 * 24,
+      reason: `Reban automatique — blacklist : ${blacklistEntry.reason}`,
+    }).catch((error) => {
+      console.error(`Impossible de reban ${member.user.tag} :`, error);
+    });
+    return;
+  }
+
   const guildId = member.guild.id;
   const now     = Date.now();
 
@@ -201,6 +216,21 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
     joinTracker.set(guildId, []);
   }
+});
+
+// ─── BLACKLIST — REBAN APRÈS UNBAN MANUEL ────────────────
+client.on(Events.GuildBanRemove, async (ban) => {
+  if (ban.guild.id !== MAIN_GUILD_ID) return;
+
+  const entry = getBlacklistEntry(ban.user.id);
+  if (!entry) return;
+
+  await ban.guild.members.ban(ban.user.id, {
+    deleteMessageSeconds: 60 * 60 * 24,
+    reason: `Reban automatique — toujours blacklisté : ${entry.reason}`,
+  }).catch((error) => {
+    console.error(`Impossible de reban ${ban.user.tag} après unban manuel :`, error);
+  });
 });
 
 // ─── WELCOME ─────────────────────────────────────────────
