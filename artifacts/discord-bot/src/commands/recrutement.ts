@@ -35,7 +35,7 @@ const RECRUITMENTS: Record<RecruitmentKey, RecruitmentData> = {
       "Si tu souhaites contribuer à maintenir une communauté agréable et respectueuse, c’est peut-être le moment de nous rejoindre.",
     conditions: [
       "Être actif sur le serveur",
-      "Avoir un comportement irréprochable",
+      "Être respectueux envers les membres et le staff",
       "N’avoir aucune sanction récente",
       "Savoir garder son calme dans les situations compliquées",
       "Être capable de prendre des décisions justes et impartiales",
@@ -53,7 +53,7 @@ const RECRUITMENTS: Record<RecruitmentKey, RecruitmentData> = {
     conditions: [
       "Être actif régulièrement",
       "Être attentif au respect du règlement",
-      "Être sérieux et mature",
+      "Être respectueux envers les autres",
       "N’avoir aucune sanction récente",
       "Avoir envie de contribuer à une bonne ambiance",
     ],
@@ -68,7 +68,7 @@ const RECRUITMENTS: Record<RecruitmentKey, RecruitmentData> = {
       "Le rôle du Support est d’aider les membres, de répondre aux questions et d’accueillir les nouveaux arrivants.",
     conditions: [
       "Être patient",
-      "Être respectueux",
+      "Aimer aider les autres",
       "Être actif",
       "Être à l’écoute",
       "Savoir expliquer calmement les choses",
@@ -86,10 +86,10 @@ const RECRUITMENTS: Record<RecruitmentKey, RecruitmentData> = {
     conditions: [
       "Être créatif",
       "Être motivé",
-      "Être dynamique",
+      "Avoir envie de faire vivre le serveur",
       "Être actif",
       "Savoir proposer régulièrement des animations",
-      "Avoir un bon esprit d’équipe",
+      "Apprécier le travail en équipe",
     ],
   },
 
@@ -101,11 +101,11 @@ const RECRUITMENTS: Record<RecruitmentKey, RecruitmentData> = {
     roleDescription:
       "Ce poste demande de traiter des situations sensibles, d’analyser les signalements et de prendre des décisions objectives.",
     conditions: [
-      "Être très mature",
-      "Être objectif et impartial",
+      "Être capable de rester objectif et calme",
+      "Écouter toutes les parties avant de prendre une décision",
       "Savoir garder des informations confidentielles",
       "Avoir une bonne connaissance du règlement",
-      "Savoir gérer les conflits avec calme",
+      "Savoir gérer les conflits avec sang-froid",
       "N’avoir aucune sanction récente",
       "Être actif et disponible",
     ],
