@@ -19,6 +19,9 @@ import {
   JAIL_ROLE_ID,
 } from "../utils/modCheck.js";
 
+const PRISON_TEXT_CHANNEL_ID = "1528120878368559208";
+const PRISON_VOICE_CHANNEL_ID = "1528120807396474930";
+
 interface JailRecord {
   roles: string[];
   moderatorId: string;
@@ -89,6 +92,12 @@ function getRestorableRoles(member: GuildMember): Role[] {
 }
 
 function findPrisonTextChannel(guild: any) {
+  const configured = guild.channels.cache.get(PRISON_TEXT_CHANNEL_ID);
+
+  if (configured?.type === ChannelType.GuildText) {
+    return configured;
+  }
+
   return guild.channels.cache.find(
     (channel: any) =>
       channel.type === ChannelType.GuildText &&
@@ -97,6 +106,12 @@ function findPrisonTextChannel(guild: any) {
 }
 
 function findPrisonVoiceChannel(guild: any) {
+  const configured = guild.channels.cache.get(PRISON_VOICE_CHANNEL_ID);
+
+  if (configured?.type === ChannelType.GuildVoice) {
+    return configured;
+  }
+
   return guild.channels.cache.find(
     (channel: any) =>
       channel.type === ChannelType.GuildVoice &&
