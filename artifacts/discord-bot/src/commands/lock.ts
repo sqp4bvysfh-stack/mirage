@@ -1,10 +1,16 @@
-import { EmbedBuilder, type GuildChannel } from "discord.js";
+import {
+  EmbedBuilder,
+  PermissionFlagsBits,
+  type GuildChannel,
+} from "discord.js";
+
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 import { getConfig } from "../utils/serverConfig.js";
 
 const DEFAULT_MEMBRES_ROLE_ID = "1362527149378240814";
 
+// Reconnaît : catégorie, categorie, category ou cat
 function isCategoryArgument(value?: string): boolean {
   if (!value) return false;
 
@@ -13,9 +19,38 @@ function isCategoryArgument(value?: string): boolean {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "");
 
-  return normalized === "categorie" || normalized === "category" || normalized === "cat";
+  return (
+    normalized === "categorie" ||
+    normalized === "category" ||
+    normalized === "cat"
+  );
 }
 
+// Récupère l’état de la permission SendMessages pour le rôle Membres.
+// false = salon verrouillé
+// true ou null = salon considéré comme déverrouillé
+function getSendMessagesState(
+  channel: GuildChannel,
+  roleId: string,
+): boolean | null {
+  if (!("permissionOverwrites" in channel)) return null;
+
+  const overwrite = channel.permissionOverwrites.cache.get(roleId);
+
+  if (!overwrite) return null;
+
+  if (overwrite.deny.has(PermissionFlagsBits.SendMessages)) {
+    return false;
+  }
+
+  if (overwrite.allow.has(PermissionFlagsBits.SendMessages)) {
+    return true;
+  }
+
+  return null;
+}
+
+// Modifie réellement la permission du salon
 async function editChannelLock(
   channel: GuildChannel,
   roleId: string,
@@ -27,14 +62,23 @@ async function editChannelLock(
     await channel.permissionOverwrites.edit(roleId, {
       SendMessages: unlock ? null : false,
     });
+
     return true;
   } catch (error) {
-    console.error(`Erreur lock/unlock du salon ${channel.id}:`, error);
+    console.error(
+      `Erreur lock/unlock du salon ${channel.id}:`,
+      error,
+    );
+
     return false;
   }
 }
 
-async function toggleCurrentChannel(message: any, unlock: boolean): Promise<void> {
+// Lock ou unlock du salon actuel
+async function toggleCurrentChannel(
+  message: any,
+  unlock: boolean,
+): Promise<void> {
   const channel = message.channel;
 
   if (
@@ -43,14 +87,19 @@ async function toggleCurrentChannel(message: any, unlock: boolean): Promise<void
     !channel.isTextBased() ||
     !("permissionOverwrites" in channel)
   ) {
-    await message.reply("❌ Impossible de modifier les permissions de ce salon.");
+    await message.reply(
+      "❌ Impossible de modifier les permissions de ce salon.",
+    );
     return;
   }
 
   const membresRoleId =
-    getConfig(message.guild.id).membresRole ?? DEFAULT_MEMBRES_ROLE_ID;
+    getConfig(message.guild.id).membresRole ??
+    DEFAULT_MEMBRES_ROLE_ID;
 
-  const membresRole = message.guild.roles.cache.get(membresRoleId);
+  const membresRole =
+    message.guild.roles.cache.get(membresRoleId);
+
   if (!membresRole) {
     await message.reply(
       "❌ Le rôle Membres est introuvable. Vérifie son ID dans la configuration.",
@@ -58,7 +107,32 @@ async function toggleCurrentChannel(message: any, unlock: boolean): Promise<void
     return;
   }
 
-  const success = await editChannelLock(channel, membresRole.id, unlock);
+  const currentState = getSendMessagesState(
+    channel,
+    membresRole.id,
+  );
+
+  // *lock alors que le salon est déjà lock
+  if (!unlock && currentState === false) {
+    await message.reply(
+      "⚠️ Ce salon est déjà verrouillé.",
+    );
+    return;
+  }
+
+  // *unlock alors que le salon n’est pas lock
+  if (unlock && currentState !== false) {
+    await message.reply(
+      "⚠️ Ce salon est déjà déverrouillé.",
+    );
+    return;
+  }
+
+  const success = await editChannelLock(
+    channel,
+    membresRole.id,
+    unlock,
+  );
 
   if (!success) {
     await message.reply(
@@ -69,35 +143,59 @@ async function toggleCurrentChannel(message: any, unlock: boolean): Promise<void
 
   const embed = new EmbedBuilder()
     .setColor(unlock ? 0x2ecc71 : 0x6d28d9)
-    .setTitle(unlock ? "🔓 Salon déverrouillé" : "🔒 Salon verrouillé")
+    .setTitle(
+      unlock
+        ? "🔓 Salon déverrouillé"
+        : "🔒 Salon verrouillé",
+    )
     .setDescription(
       unlock
         ? "Les membres peuvent à nouveau écrire dans ce salon."
         : "Les membres ne peuvent plus écrire dans ce salon.",
     )
-    .addFields({ name: "Modérateur", value: message.author.tag })
+    .addFields({
+      name: "Modérateur",
+      value: message.author.tag,
+    })
     .setTimestamp();
 
-  await message.reply({ embeds: [embed] });
+  await message.reply({
+    embeds: [embed],
+  });
 }
 
-async function toggleCategory(message: any, unlock: boolean): Promise<void> {
-  if (!message.guild || !message.channel || !("parent" in message.channel)) {
-    await message.reply("❌ Cette commande doit être utilisée dans un salon du serveur.");
+// Lock ou unlock de toute la catégorie actuelle
+async function toggleCategory(
+  message: any,
+  unlock: boolean,
+): Promise<void> {
+  if (
+    !message.guild ||
+    !message.channel ||
+    !("parent" in message.channel)
+  ) {
+    await message.reply(
+      "❌ Cette commande doit être utilisée dans un salon du serveur.",
+    );
     return;
   }
 
   const category = message.channel.parent;
 
   if (!category) {
-    await message.reply("❌ Ce salon n’est placé dans aucune catégorie.");
+    await message.reply(
+      "❌ Ce salon n’est placé dans aucune catégorie.",
+    );
     return;
   }
 
   const membresRoleId =
-    getConfig(message.guild.id).membresRole ?? DEFAULT_MEMBRES_ROLE_ID;
+    getConfig(message.guild.id).membresRole ??
+    DEFAULT_MEMBRES_ROLE_ID;
 
-  const membresRole = message.guild.roles.cache.get(membresRoleId);
+  const membresRole =
+    message.guild.roles.cache.get(membresRoleId);
+
   if (!membresRole) {
     await message.reply(
       "❌ Le rôle Membres est introuvable. Vérifie son ID dans la configuration.",
@@ -105,14 +203,56 @@ async function toggleCategory(message: any, unlock: boolean): Promise<void> {
     return;
   }
 
-  const channels = [...category.children.cache.values()];
+  const channels = [
+    ...category.children.cache.values(),
+  ].filter(
+    (channel) => "permissionOverwrites" in channel,
+  );
+
+  // On ne garde que les salons qui doivent réellement changer
+  const channelsToModify = channels.filter((channel) => {
+    const currentState = getSendMessagesState(
+      channel,
+      membresRole.id,
+    );
+
+    if (unlock) {
+      // Pour unlock, on ne modifie que les salons lock
+      return currentState === false;
+    }
+
+    // Pour lock, on ne modifie que les salons non lock
+    return currentState !== false;
+  });
+
+  const alreadyCorrect =
+    channels.length - channelsToModify.length;
+
+  // Toute la catégorie est déjà dans le bon état
+  if (channelsToModify.length === 0) {
+    await message.reply(
+      unlock
+        ? "⚠️ Cette catégorie est déjà déverrouillée."
+        : "⚠️ Cette catégorie est déjà verrouillée.",
+    );
+    return;
+  }
+
   let modified = 0;
   let failed = 0;
 
-  for (const channel of channels) {
-    const success = await editChannelLock(channel, membresRole.id, unlock);
-    if (success) modified += 1;
-    else failed += 1;
+  for (const channel of channelsToModify) {
+    const success = await editChannelLock(
+      channel,
+      membresRole.id,
+      unlock,
+    );
+
+    if (success) {
+      modified += 1;
+    } else {
+      failed += 1;
+    }
   }
 
   if (modified === 0) {
@@ -135,22 +275,49 @@ async function toggleCategory(message: any, unlock: boolean): Promise<void> {
         : `Les membres ne peuvent plus écrire dans les salons de **${category.name}**.`,
     )
     .addFields(
-      { name: "Salons modifiés", value: String(modified), inline: true },
-      { name: "Échecs", value: String(failed), inline: true },
-      { name: "Modérateur", value: message.author.tag, inline: false },
+      {
+        name: "Salons modifiés",
+        value: String(modified),
+        inline: true,
+      },
+      {
+        name: unlock
+          ? "Déjà déverrouillés"
+          : "Déjà verrouillés",
+        value: String(alreadyCorrect),
+        inline: true,
+      },
+      {
+        name: "Échecs",
+        value: String(failed),
+        inline: true,
+      },
+      {
+        name: "Modérateur",
+        value: message.author.tag,
+        inline: false,
+      },
     )
     .setTimestamp();
 
-  await message.reply({ embeds: [embed] });
+  await message.reply({
+    embeds: [embed],
+  });
 }
 
+// Fonction commune à lock et unlock
 async function executeLockCommand(
   message: any,
   args: string[],
   unlock: boolean,
 ): Promise<void> {
-  if (!message.member || !isModerator(message.member)) {
-    await message.reply("❌ Tu n’as pas la permission d’utiliser cette commande.");
+  if (
+    !message.member ||
+    !isModerator(message.member)
+  ) {
+    await message.reply(
+      "❌ Tu n’as pas la permission d’utiliser cette commande.",
+    );
     return;
   }
 
@@ -162,12 +329,34 @@ async function executeLockCommand(
   await toggleCurrentChannel(message, unlock);
 }
 
+// Commande *lock
 export const lockCommand: Command = {
   name: "lock",
-  description: "Verrouille un salon ou sa catégorie",
+  description:
+    "Verrouille un salon ou sa catégorie",
   usage: "*lock [catégorie]",
 
   execute: async (message, args) => {
-    await executeLockCommand(message, args, false);
+    await executeLockCommand(
+      message,
+      args,
+      false,
+    );
+  },
+};
+
+// Commande *unlock
+export const unlockCommand: Command = {
+  name: "unlock",
+  description:
+    "Déverrouille un salon ou sa catégorie",
+  usage: "*unlock [catégorie]",
+
+  execute: async (message, args) => {
+    await executeLockCommand(
+      message,
+      args,
+      true,
+    );
   },
 };
