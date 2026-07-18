@@ -11,6 +11,7 @@ import {
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 import { getConfig } from "../utils/serverConfig.js";
+import { sendTicketLog } from "../utils/logs.js";
 
 // ─── Defaults (MIRAGE) ────────────────────────────────────────────────────
 const DEFAULT_STAFF_ID = "1476396219314995331";
@@ -126,6 +127,18 @@ export async function handleTicketInteraction(interaction: Interaction) {
       });
 
       await interaction.editReply({ content: `✅ Ton ticket a été créé : <#${ticketChannel.id}>` });
+
+      const logEmbed = new EmbedBuilder()
+        .setColor(cfg.color)
+        .setTitle("🎫 Ticket ouvert")
+        .addFields(
+          { name: "Auteur", value: `${interaction.user}`, inline: true },
+          { name: "Type", value: cfg.label, inline: true },
+          { name: "Salon", value: `<#${ticketChannel.id}>`, inline: true },
+        )
+        .setTimestamp();
+
+      await sendTicketLog(guild, { embeds: [logEmbed] });
     } catch {
       await interaction.editReply({ content: "❌ Impossible de créer le ticket. Vérifie que le bot a la permission **Gérer les salons**." });
     }
@@ -148,6 +161,23 @@ export async function handleTicketInteraction(interaction: Interaction) {
     }
 
     openTickets.delete(`${userId}_${type}`);
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0xe74c3c)
+      .setTitle("🔒 Ticket fermé")
+      .addFields(
+        { name: "Auteur du ticket", value: `<@${userId}>`, inline: true },
+        { name: "Fermé par", value: `${interaction.user}`, inline: true },
+        { name: "Type", value: type, inline: true },
+        {
+          name: "Salon",
+          value: interaction.channel ? `<#${interaction.channel.id}>` : "Inconnu",
+          inline: true,
+        },
+      )
+      .setTimestamp();
+
+    await sendTicketLog(interaction.guild, { embeds: [logEmbed] });
     await interaction.reply({ content: `🔒 Ticket fermé par ${interaction.user}. Ce salon sera supprimé dans 5 secondes.` });
 
     setTimeout(async () => {
@@ -179,7 +209,19 @@ export const ticketCommand: Command = {
       new ButtonBuilder().setCustomId("tkt_open_owner").setLabel("👑 Owner").setStyle(ButtonStyle.Primary),
       new ButtonBuilder().setCustomId("tkt_open_abus").setLabel("⚠️ Signaler un abus").setStyle(ButtonStyle.Danger),
     );
-    await message.channel.send({ embeds: [embed], components: [row] });
+    const panel = await message.channel.send({ embeds: [embed], components: [row] });
     await message.reply("✅ Panneau de tickets initialisé !");
+
+    const logEmbed = new EmbedBuilder()
+      .setColor(0x5865f2)
+      .setTitle("⚙️ Panneau de tickets initialisé")
+      .addFields(
+        { name: "Salon", value: `${message.channel}`, inline: true },
+        { name: "Message", value: `[Ouvrir le panneau](${panel.url})`, inline: true },
+        { name: "Par", value: `${message.author}`, inline: true },
+      )
+      .setTimestamp();
+
+    if (message.guild) await sendTicketLog(message.guild, { embeds: [logEmbed] });
   },
 };
