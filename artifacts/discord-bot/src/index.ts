@@ -142,6 +142,7 @@ for (const cmd of [
   blCommand,
   recrutementCommand,
   profilCommand,
+  verificationCommand,
   unblCommand,
   antiraidCommand,
   antispamCommand,
@@ -408,17 +409,7 @@ client.on(Events.MessageCreate, async (message: Message) => {
   if (!commandName) return;
 
   const command = commands.get(commandName);
-
-  if (!command) {
-    await message.reply(
-      `❌ Commande inconnue : \`${PREFIX}${commandName}\`.`,
-    ).catch(() => {});
-
-    console.warn(
-      `⚠️ Commande inconnue reçue : ${commandName}`,
-    );
-    return;
-  }
+  if (!command) return;
 
   try {
     await command.execute(message, args);
