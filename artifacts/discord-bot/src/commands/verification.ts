@@ -126,8 +126,6 @@ export async function handleVerificationJoin(
   if (member.guild.id !== MAIN_GUILD_ID) return;
   if (member.user.bot) return;
 
-  if (member.roles.cache.has(MEMBER_ROLE_ID)) return;
-
   const unverifiedRole =
     member.guild.roles.cache.get(UNVERIFIED_ROLE_ID);
 
@@ -136,17 +134,59 @@ export async function handleVerificationJoin(
     return;
   }
 
-  await member.roles
-    .add(
-      unverifiedRole,
-      "Rôle automatique avant vérification",
-    )
-    .catch((error) => {
-      console.error(
-        `❌ Impossible d’ajouter Non vérifié à ${member.user.tag}:`,
-        error,
-      );
-    });
+  if (member.roles.cache.has(MEMBER_ROLE_ID)) {
+    await member.roles
+      .remove(
+        MEMBER_ROLE_ID,
+        "Retrait automatique avant vérification",
+      )
+      .catch((error) => {
+        console.error(
+          `❌ Impossible de retirer Membres à ${member.user.tag}:`,
+          error,
+        );
+      });
+  }
+
+  if (!member.roles.cache.has(UNVERIFIED_ROLE_ID)) {
+    await member.roles
+      .add(
+        unverifiedRole,
+        "Rôle automatique avant vérification",
+      )
+      .catch((error) => {
+        console.error(
+          `❌ Impossible d’ajouter Non vérifié à ${member.user.tag}:`,
+          error,
+        );
+      });
+  }
+
+  setTimeout(async () => {
+    const refreshedMember = await member.guild.members
+      .fetch(member.id)
+      .catch(() => null);
+
+    if (!refreshedMember) return;
+
+    if (refreshedMember.roles.cache.has(MEMBER_ROLE_ID)) {
+      await refreshedMember.roles
+        .remove(
+          MEMBER_ROLE_ID,
+          "Retrait du rôle Membres avant validation",
+        )
+        .catch(() => {});
+    }
+
+    if (!refreshedMember.roles.cache.has(UNVERIFIED_ROLE_ID)) {
+      await refreshedMember.roles
+        .add(
+          UNVERIFIED_ROLE_ID,
+          "Rôle Non vérifié obligatoire",
+        )
+        .catch(() => {});
+    }
+  }, 3000);
 }
 
 function buildVerificationPanel(): {
