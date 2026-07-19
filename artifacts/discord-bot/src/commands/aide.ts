@@ -92,6 +92,10 @@ const CATEGORIES: Record<string, { emoji: string; label: string; embed: EmbedBui
         { name: "`*setup origines edit <ID>`",           value: "Ajoute des origines à un panneau existant. Les données restent après redémarrage." },
         { name: "`*boostsetup #annonce #demandes`",      value: "Modifie les salons du système boost. Les salons No Chill sont déjà configurés." },
         { name: "`*photo`",                              value: "Affiche le salon photo fixe. Les médias reçoivent automatiquement la réaction 💜." },
+        { name: "`*profil setup [couleurs|genre|age]`", value: "Publie tous les panneaux Profil ou seulement la catégorie choisie." },
+        { name: "`*recrutement <poste>`",              value: "Publie une annonce de recrutement dans le salon actuel." },
+        { name: "`*recrutement fermer <poste>`",       value: "Publie la fermeture du recrutement choisi." },
+        { name: "`*verification setup`",                value: "Installe le panneau de vérification. Refuse d’en créer un second s’il existe déjà." },
       ),
   },
 
