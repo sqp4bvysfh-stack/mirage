@@ -2,7 +2,7 @@ import type { Message } from "discord.js";
 import type { Command } from "../types.js";
 
 const PHOTO_CHANNEL_ID = "1528083290848891072";
-const PHOTO_REACTION = "💜";
+const PHOTO_REACTIONS = ["✅", "❌"];
 
 export const photoCommand: Command = {
   name: "photo",
@@ -48,7 +48,9 @@ export async function handlePhotoSystem(message: Message): Promise<void> {
     return;
   }
 
-  await message.react(PHOTO_REACTION).catch(() => {});
+  for (const emoji of PHOTO_REACTIONS) {
+  await message.react(emoji).catch(() => {});
+}
 }
 
 export function getPhotoEmoji(channelId: string): string | undefined {
