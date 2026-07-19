@@ -9,6 +9,14 @@ import {
   type Interaction,
 } from "discord.js";
 
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
@@ -17,6 +25,99 @@ const MAIN_GUILD_ID = "1362520000426152036";
 const MEMBER_ROLE_ID = "1362527149378240814";
 const UNVERIFIED_ROLE_ID = "1523505822569594992";
 const VERIFICATION_CHANNEL_ID = "1528184967861899435";
+
+type VerificationPanelData = {
+  messageId?: string;
+};
+
+const VERIFICATION_PANEL_FILE = (() => {
+  try {
+    if (!existsSync("/data")) {
+      mkdirSync("/data", { recursive: true });
+    }
+
+    return "/data/verification-panel.json";
+  } catch {
+    return join(process.cwd(), "verification-panel.json");
+  }
+})();
+
+function loadPanelData(): VerificationPanelData {
+  try {
+    if (!existsSync(VERIFICATION_PANEL_FILE)) return {};
+
+    return JSON.parse(
+      readFileSync(VERIFICATION_PANEL_FILE, "utf-8"),
+    ) as VerificationPanelData;
+  } catch (error) {
+    console.error(
+      "❌ Impossible de charger verification-panel.json :",
+      error,
+    );
+    return {};
+  }
+}
+
+function savePanelData(data: VerificationPanelData): void {
+  try {
+    writeFileSync(
+      VERIFICATION_PANEL_FILE,
+      JSON.stringify(data, null, 2),
+      "utf-8",
+    );
+  } catch (error) {
+    console.error(
+      "❌ Impossible de sauvegarder verification-panel.json :",
+      error,
+    );
+  }
+}
+
+async function findExistingVerificationPanel(
+  channel: import("discord.js").TextChannel,
+): Promise<string | null> {
+  const saved = loadPanelData();
+
+  if (saved.messageId) {
+    const savedMessage = await channel.messages
+      .fetch(saved.messageId)
+      .catch(() => null);
+
+    if (savedMessage) {
+      const hasButton = savedMessage.components.some((row) =>
+        row.components.some(
+          (component) =>
+            "customId" in component &&
+            component.customId === "verification_simple",
+        ),
+      );
+
+      if (hasButton) return savedMessage.id;
+    }
+  }
+
+  const recentMessages = await channel.messages
+    .fetch({ limit: 100 })
+    .catch(() => null);
+
+  if (!recentMessages) return null;
+
+  const existing = recentMessages.find((message) =>
+    message.author.id === channel.client.user.id &&
+    message.components.some((row) =>
+      row.components.some(
+        (component) =>
+          "customId" in component &&
+          component.customId === "verification_simple",
+      ),
+    ),
+  );
+
+  if (!existing) return null;
+
+  savePanelData({ messageId: existing.id });
+  return existing.id;
+}
 
 // ─── Rôle automatique à l’arrivée ─────────────────────────
 export async function handleVerificationJoin(
@@ -110,12 +211,25 @@ export const verificationCommand: Command = {
       return;
     }
 
+    const existingPanelId =
+      await findExistingVerificationPanel(channel);
+
+    if (existingPanelId) {
+      await message.reply(
+        `⚠️ Le panneau de vérification est déjà installé : ` +
+        `https://discord.com/channels/${message.guild.id}/${channel.id}/${existingPanelId}`,
+      );
+      return;
+    }
+
     const { embed, row } = buildVerificationPanel();
 
-    await channel.send({
+    const panel = await channel.send({
       embeds: [embed],
       components: [row],
     });
+
+    savePanelData({ messageId: panel.id });
 
     await message.reply(
       `✅ Panneau publié dans <#${VERIFICATION_CHANNEL_ID}>.`,
