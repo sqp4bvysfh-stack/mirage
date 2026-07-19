@@ -1,6 +1,9 @@
 import {
   EmbedBuilder,
   type Message,
+  type PartialMessage,
+  type Collection,
+  type Snowflake,
 } from "discord.js";
 
 import type { Command } from "../types.js";
@@ -25,41 +28,29 @@ type CachedMessage = {
 };
 
 const MAX_SNIPE_MESSAGES = 10;
-const MAX_CACHED_MESSAGES = 500;
+const MAX_CACHED_MESSAGES = 1000;
 
-const deletedMessages =
-  new Map<string, SnipedMessage[]>();
+const deletedMessages = new Map<string, SnipedMessage[]>();
+const messageCache = new Map<string, CachedMessage>();
 
-const messageCache =
-  new Map<string, CachedMessage>();
-
-export function cacheMessageForSnipe(
-  message: Message,
-): void {
+export function cacheMessageForSnipe(message: Message): void {
   if (!message.guild) return;
   if (message.author.bot) return;
 
-  const attachments = [
-    ...message.attachments.values(),
-  ].map((attachment) => attachment.url);
+  const attachments = [...message.attachments.values()]
+    .map((attachment) => attachment.url);
 
   messageCache.set(message.id, {
     messageId: message.id,
     channelId: message.channelId,
     authorId: message.author.id,
     authorTag: message.author.tag,
-    content:
-      message.content?.trim() ||
-      "*Aucun texte*",
+    content: message.content?.trim() || "*Aucun texte*",
     attachments,
   });
 
-  if (
-    messageCache.size >
-    MAX_CACHED_MESSAGES
-  ) {
-    const oldestKey =
-      messageCache.keys().next().value;
+  if (messageCache.size > MAX_CACHED_MESSAGES) {
+    const oldestKey = messageCache.keys().next().value;
 
     if (oldestKey) {
       messageCache.delete(oldestKey);
@@ -67,13 +58,12 @@ export function cacheMessageForSnipe(
   }
 }
 
-export function handleDeletedMessage(
-  message: Message,
+function registerDeletedMessage(
+  message: Message | PartialMessage,
 ): void {
   if (!message.guild) return;
 
-  const cached =
-    messageCache.get(message.id);
+  const cached = messageCache.get(message.id);
 
   const authorId =
     cached?.authorId ??
@@ -83,13 +73,8 @@ export function handleDeletedMessage(
     cached?.authorTag ??
     message.author?.tag;
 
-  if (!authorId || !authorTag) {
-    return;
-  }
-
-  if (message.author?.bot) {
-    return;
-  }
+  if (!authorId || !authorTag) return;
+  if (message.author?.bot) return;
 
   const content =
     cached?.content ??
@@ -98,12 +83,8 @@ export function handleDeletedMessage(
 
   const attachments =
     cached?.attachments ??
-    [
-      ...message.attachments.values(),
-    ].map(
-      (attachment) =>
-        attachment.url,
-    );
+    [...message.attachments.values()]
+      .map((attachment) => attachment.url);
 
   if (
     content === "*Aucun texte*" &&
@@ -112,10 +93,12 @@ export function handleDeletedMessage(
     return;
   }
 
+  const channelId =
+    cached?.channelId ??
+    message.channelId;
+
   const history =
-    deletedMessages.get(
-      message.channelId,
-    ) ?? [];
+    deletedMessages.get(channelId) ?? [];
 
   history.unshift({
     messageId: message.id,
@@ -126,82 +109,69 @@ export function handleDeletedMessage(
     deletedAt: Date.now(),
   });
 
-  if (
-    history.length >
-    MAX_SNIPE_MESSAGES
-  ) {
-    history.splice(
-      MAX_SNIPE_MESSAGES,
-    );
+  if (history.length > MAX_SNIPE_MESSAGES) {
+    history.splice(MAX_SNIPE_MESSAGES);
   }
 
-  deletedMessages.set(
-    message.channelId,
-    history,
-  );
+  deletedMessages.set(channelId, history);
+  messageCache.delete(message.id);
+}
 
-  messageCache.delete(
-    message.id,
-  );
+export function handleDeletedMessage(
+  message: Message | PartialMessage,
+): void {
+  registerDeletedMessage(message);
+}
+
+export function handleBulkDeletedMessages(
+  messages: Collection<Snowflake, Message | PartialMessage>,
+): void {
+  const ordered = [...messages.values()]
+    .sort((a, b) => b.createdTimestamp - a.createdTimestamp);
+
+  for (const message of ordered) {
+    registerDeletedMessage(message);
+  }
 }
 
 function makeEmbed(
   entry: SnipedMessage,
   index?: number,
 ): EmbedBuilder {
-  const embed =
-    new EmbedBuilder()
-      .setColor(0x6d28d9)
-      .setTitle(
-        index
-          ? `✦ Chichi • Message supprimé #${index}`
-          : "✦ Chichi • Dernier message supprimé",
-      )
-      .setDescription(
-        entry.content.slice(
-          0,
-          4000,
-        ),
-      )
-      .addFields(
-        {
-          name: "Auteur",
-          value:
-            `<@${entry.authorId}>\n\`${entry.authorTag}\``,
-          inline: true,
-        },
-        {
-          name: "Supprimé",
-          value:
-            `<t:${Math.floor(entry.deletedAt / 1000)}:R>`,
-          inline: true,
-        },
-      )
-      .setTimestamp(
-        entry.deletedAt,
-      );
+  const embed = new EmbedBuilder()
+    .setColor(0x6d28d9)
+    .setTitle(
+      index
+        ? `✦ Chichi • Message supprimé #${index}`
+        : "✦ Chichi • Dernier message supprimé",
+    )
+    .setDescription(entry.content.slice(0, 4000))
+    .addFields(
+      {
+        name: "Auteur",
+        value: `<@${entry.authorId}>\n\`${entry.authorTag}\``,
+        inline: true,
+      },
+      {
+        name: "Supprimé",
+        value: `<t:${Math.floor(entry.deletedAt / 1000)}:R>`,
+        inline: true,
+      },
+    )
+    .setTimestamp(entry.deletedAt);
 
-  if (
-    entry.attachments.length > 0
-  ) {
+  if (entry.attachments.length > 0) {
     embed.addFields({
       name: "Pièces jointes",
       value: entry.attachments
-        .map(
-          (url, i) =>
-            `[Fichier ${i + 1}](${url})`,
-        )
+        .map((url, index) => `[Fichier ${index + 1}](${url})`)
         .join("\n")
         .slice(0, 1024),
     });
 
-    const image =
-      entry.attachments.find(
-        (url) =>
-          /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(
-            url,
-          ),
-      );
+    const image = entry.attachments.find((url) =>
+      /\.(png|jpe?g|gif|webp)(\?.*)?$/i.test(url),
+    );
 
     if (image) {
       embed.setImage(image);
@@ -213,21 +183,15 @@ function makeEmbed(
 
 export const chichiCommand: Command = {
   name: "chichi",
-  description:
-    "Affiche les derniers messages supprimés",
+  description: "Affiche les derniers messages supprimés",
   usage:
-    "*chichi snipe | *chichi isnipe | *chichi clearsnipe | *s | *is | *sclearsnipe",
+    "*chichi snipe | *chichi isnipe | *chichi clearsnipe",
 
-  execute: async (
-    message,
-    args,
-  ) => {
+  execute: async (message, args) => {
     if (
       !message.guild ||
       !message.member ||
-      !isModerator(
-        message.member,
-      )
+      !isModerator(message.member)
     ) {
       await message.reply(
         "❌ Tu n’as pas la permission d’utiliser cette commande.",
@@ -235,32 +199,23 @@ export const chichiCommand: Command = {
       return;
     }
 
-    const action =
-      args
-        .join("")
-        .toLowerCase()
-        .replace(
-          /\s+/g,
-          "",
-        );
+    const action = args
+      .join("")
+      .toLowerCase()
+      .replace(/\s+/g, "");
 
     const history =
-      deletedMessages.get(
-        message.channelId,
-      ) ?? [];
+      deletedMessages.get(message.channelId) ?? [];
 
     if (
       action === "clearsnipe" ||
       action === "sclearsnipe"
     ) {
-      deletedMessages.delete(
-        message.channelId,
-      );
+      deletedMessages.delete(message.channelId);
 
-      const confirmation =
-        await message.reply(
-          "✅ Historique des messages supprimés effacé pour ce salon.",
-        );
+      const confirmation = await message.reply(
+        "✅ Historique des messages supprimés effacé pour ce salon.",
+      );
 
       setTimeout(() => {
         message.delete().catch(() => {});
@@ -274,8 +229,7 @@ export const chichiCommand: Command = {
       action === "snipe" ||
       action === "s"
     ) {
-      const latest =
-        history[0];
+      const latest = history[0];
 
       if (!latest) {
         await message.reply(
@@ -285,9 +239,7 @@ export const chichiCommand: Command = {
       }
 
       await message.reply({
-        embeds: [
-          makeEmbed(latest),
-        ],
+        embeds: [makeEmbed(latest)],
         allowedMentions: {
           parse: [],
           repliedUser: false,
@@ -301,9 +253,7 @@ export const chichiCommand: Command = {
       action === "isnipe" ||
       action === "is"
     ) {
-      if (
-        history.length === 0
-      ) {
+      if (history.length === 0) {
         await message.reply(
           "❌ Aucun message supprimé enregistré dans ce salon.",
         );
@@ -312,19 +262,9 @@ export const chichiCommand: Command = {
 
       await message.reply({
         embeds: history
-          .slice(
-            0,
-            MAX_SNIPE_MESSAGES,
-          )
-          .map(
-            (
-              entry,
-              i,
-            ) =>
-              makeEmbed(
-                entry,
-                i + 1,
-              ),
+          .slice(0, MAX_SNIPE_MESSAGES)
+          .map((entry, index) =>
+            makeEmbed(entry, index + 1),
           ),
         allowedMentions: {
           parse: [],
@@ -341,17 +281,13 @@ export const chichiCommand: Command = {
   },
 };
 
-
 export const sCommand: Command = {
   name: "s",
   description: "Affiche le dernier message supprimé",
   usage: "*s",
 
   execute: async (message) => {
-    await chichiCommand.execute(
-      message,
-      ["snipe"],
-    );
+    await chichiCommand.execute(message, ["snipe"]);
   },
 };
 
@@ -361,10 +297,7 @@ export const isCommand: Command = {
   usage: "*is",
 
   execute: async (message) => {
-    await chichiCommand.execute(
-      message,
-      ["isnipe"],
-    );
+    await chichiCommand.execute(message, ["isnipe"]);
   },
 };
 
@@ -374,9 +307,6 @@ export const sclearsnipeCommand: Command = {
   usage: "*sclearsnipe",
 
   execute: async (message) => {
-    await chichiCommand.execute(
-      message,
-      ["clearsnipe"],
-    );
+    await chichiCommand.execute(message, ["clearsnipe"]);
   },
 };
