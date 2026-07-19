@@ -16,28 +16,40 @@ type PermConfig = {
   label: string;
 };
 
+async function getRepliedMessage(
+  message: Message,
+): Promise<Message | null> {
+  const referenceId = message.reference?.messageId;
+
+  if (!referenceId) return null;
+
+  return message.channel.messages
+    .fetch(referenceId)
+    .catch(() => null);
+}
+
 async function getRepliedMember(
   message: Message,
 ): Promise<GuildMember | null> {
-  const referenceId =
-    message.reference?.messageId;
-
-  if (!referenceId || !message.guild) {
-    return null;
-  }
+  if (!message.guild) return null;
 
   const repliedMessage =
-    await message.channel.messages
-      .fetch(referenceId)
-      .catch(() => null);
+    await getRepliedMessage(message);
 
-  if (!repliedMessage) {
-    return null;
-  }
+  if (!repliedMessage) return null;
 
   return message.guild.members
     .fetch(repliedMessage.author.id)
     .catch(() => null);
+}
+
+async function deleteLater(
+  message: Message,
+  delay = 4000,
+): Promise<void> {
+  setTimeout(() => {
+    message.delete().catch(() => {});
+  }, delay);
 }
 
 function createPermCommand(
@@ -62,20 +74,20 @@ function createPermCommand(
         return;
       }
 
+      const repliedMessage =
+        await getRepliedMessage(message);
+
       const target =
         await getRepliedMember(message);
 
-      if (!target) {
+      if (!target || !repliedMessage) {
         const error =
           await message.reply(
             `❌ Réponds au message de la personne avec \`*${config.name}\`.`,
           );
 
-        setTimeout(() => {
-          message.delete().catch(() => {});
-          error.delete().catch(() => {});
-        }, 4000);
-
+        await deleteLater(message);
+        await deleteLater(error);
         return;
       }
 
@@ -85,11 +97,8 @@ function createPermCommand(
             "❌ Tu ne peux pas donner cette permission à un bot.",
           );
 
-        setTimeout(() => {
-          message.delete().catch(() => {});
-          error.delete().catch(() => {});
-        }, 4000);
-
+        await deleteLater(message);
+        await deleteLater(error);
         return;
       }
 
@@ -104,22 +113,10 @@ function createPermCommand(
             `❌ Le rôle ${config.label} est introuvable.`,
           );
 
-        setTimeout(() => {
-          message.delete().catch(() => {});
-          error.delete().catch(() => {});
-        }, 4000);
-
+        await deleteLater(message);
+        await deleteLater(error);
         return;
       }
-
-      const repliedMessage =
-        message.reference?.messageId
-          ? await message.channel.messages
-              .fetch(
-                message.reference.messageId,
-              )
-              .catch(() => null)
-          : null;
 
       if (
         target.roles.cache.has(
@@ -132,12 +129,8 @@ function createPermCommand(
           );
 
         await message.delete().catch(() => {});
-        await repliedMessage?.delete().catch(() => {});
-
-        setTimeout(() => {
-          already.delete().catch(() => {});
-        }, 4000);
-
+        await repliedMessage.delete().catch(() => {});
+        await deleteLater(already);
         return;
       }
 
@@ -158,16 +151,12 @@ function createPermCommand(
           );
 
         await message.delete().catch(() => {});
-
-        setTimeout(() => {
-          failed.delete().catch(() => {});
-        }, 5000);
-
+        await deleteLater(failed, 5000);
         return;
       }
 
       await message.delete().catch(() => {});
-      await repliedMessage?.delete().catch(() => {});
+      await repliedMessage.delete().catch(() => {});
 
       const embed =
         new EmbedBuilder()
@@ -181,9 +170,7 @@ function createPermCommand(
           embeds: [embed],
         });
 
-      setTimeout(() => {
-        confirmation.delete().catch(() => {});
-      }, 4000);
+      await deleteLater(confirmation);
     },
   };
 }
@@ -201,3 +188,116 @@ export const permvocCommand =
     roleId: PERM_VOC_ROLE_ID,
     label: "vocal",
   });
+
+export const permremoveCommand: Command = {
+  name: "permremove",
+  description:
+    "Retire les permissions images et vocal",
+  usage:
+    "Réponds à un message avec *permremove",
+
+  execute: async (message) => {
+    if (
+      !message.guild ||
+      !message.member ||
+      !isModerator(message.member)
+    ) {
+      await message.reply(
+        "❌ Tu n’as pas la permission d’utiliser cette commande.",
+      );
+      return;
+    }
+
+    const repliedMessage =
+      await getRepliedMessage(message);
+
+    const target =
+      await getRepliedMember(message);
+
+    if (!target || !repliedMessage) {
+      const error =
+        await message.reply(
+          "❌ Réponds au message de la personne avec `*permremove`.",
+        );
+
+      await deleteLater(message);
+      await deleteLater(error);
+      return;
+    }
+
+    const roleIds = [
+      PERM_IMG_ROLE_ID,
+      PERM_VOC_ROLE_ID,
+    ].filter((roleId) =>
+      target.roles.cache.has(roleId),
+    );
+
+    if (roleIds.length === 0) {
+      const none =
+        await message.channel.send(
+          `⚠️ ${target} ne possède aucune permission spéciale.`,
+        );
+
+      await message.delete().catch(() => {});
+      await repliedMessage.delete().catch(() => {});
+      await deleteLater(none);
+      return;
+    }
+
+    try {
+      await target.roles.remove(
+        roleIds,
+        `Permissions retirées par ${message.author.tag}`,
+      );
+    } catch (error) {
+      console.error(
+        "❌ Erreur retrait permissions :",
+        error,
+      );
+
+      const failed =
+        await message.channel.send(
+          "❌ Impossible de retirer les permissions. Vérifie la hiérarchie des rôles.",
+        );
+
+      await message.delete().catch(() => {});
+      await deleteLater(failed, 5000);
+      return;
+    }
+
+    await message.delete().catch(() => {});
+    await repliedMessage.delete().catch(() => {});
+
+    const removedLabels: string[] = [];
+
+    if (
+      roleIds.includes(
+        PERM_IMG_ROLE_ID,
+      )
+    ) {
+      removedLabels.push("images");
+    }
+
+    if (
+      roleIds.includes(
+        PERM_VOC_ROLE_ID,
+      )
+    ) {
+      removedLabels.push("vocal");
+    }
+
+    const embed =
+      new EmbedBuilder()
+        .setColor(0x6d28d9)
+        .setDescription(
+          `✅ Permission${removedLabels.length > 1 ? "s" : ""} **${removedLabels.join(" et ")}** retirée${removedLabels.length > 1 ? "s" : ""} à ${target}.`,
+        );
+
+    const confirmation =
+      await message.channel.send({
+        embeds: [embed],
+      });
+
+    await deleteLater(confirmation);
+  },
+};
