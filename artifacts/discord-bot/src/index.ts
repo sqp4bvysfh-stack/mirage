@@ -76,6 +76,7 @@ import {
 import {
   permimgCommand,
   permvocCommand,
+  permremoveCommand,
 } from "./commands/perm.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
@@ -148,6 +149,7 @@ for (const cmd of [
   profilCommand,
   permimgCommand,
   permvocCommand,
+  permremoveCommand,
   verificationCommand,
   unblCommand,
   antiraidCommand,
