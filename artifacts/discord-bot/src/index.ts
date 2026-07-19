@@ -86,6 +86,7 @@ import {
   cacheMessageForSnipe,
   handleDeletedMessage,
   handleBulkDeletedMessages,
+  handleSnipeInteraction,
 } from "./commands/chichi.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
@@ -318,6 +319,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await handleAideInteraction(interaction);
     await handleBoostInteraction(interaction);
     await handleVerificationInteraction(interaction);
+    await handleSnipeInteraction(interaction);
   } catch (err) {
     console.error("Erreur interaction:", err);
   }
