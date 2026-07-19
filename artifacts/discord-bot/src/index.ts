@@ -153,8 +153,7 @@ for (const cmd of [
   verificationCommand,
   unblCommand,
   antiraidCommand,
-  antispamCommand,
-]) {
+  antispamCommand,]) {
   commands.set(cmd.name, cmd);
 }
 
@@ -405,7 +404,13 @@ client.on(Events.MessageCreate, async (message: Message) => {
       message.channelId,
       message.guildId ?? undefined
     );
-    await message.reply(reply);
+    await message.reply({
+      content: reply,
+      allowedMentions: {
+        parse: [],
+        repliedUser: false,
+      },
+    });
     return;
   }
 
