@@ -80,6 +80,10 @@ import {
 } from "./commands/perm.js";
 import {
   chichiCommand,
+  sCommand,
+  isCommand,
+  sclearsnipeCommand,
+  cacheMessageForSnipe,
   handleDeletedMessage,
 } from "./commands/chichi.js";
 
@@ -369,6 +373,9 @@ client.on(Events.MessageCreate, async (message: Message) => {
   if (!message.guild || message.guild.id !== MAIN_GUILD_ID) return;
 
   incrementMessages(message.guild.id);
+
+  // ── CACHE SNIPE ─────────────────────────────────────────────────────────
+  cacheMessageForSnipe(message);
 
   // ── ANTI-SPAM ──────────────────────────────────────────────────────────
   if (await handleAntiSpam(message)) return;
