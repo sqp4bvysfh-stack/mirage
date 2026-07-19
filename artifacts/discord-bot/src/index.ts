@@ -78,6 +78,10 @@ import {
   permvocCommand,
   permremoveCommand,
 } from "./commands/perm.js";
+import {
+  chichiCommand,
+  handleDeletedMessage,
+} from "./commands/chichi.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -150,6 +154,7 @@ for (const cmd of [
   permimgCommand,
   permvocCommand,
   permremoveCommand,
+  chichiCommand,
   verificationCommand,
   unblCommand,
   antiraidCommand,
@@ -341,6 +346,17 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
   const member = await guild?.members.fetch(user.id).catch(() => null);
   if (!member) return;
   await member.roles.remove(cfg.roleId).catch(() => {});
+});
+
+// ─── SNIPE — MESSAGES SUPPRIMÉS ───────────────────────────
+client.on(Events.MessageDelete, async (message) => {
+  if (!message.guild || message.guild.id !== MAIN_GUILD_ID) return;
+
+  try {
+    handleDeletedMessage(message as Message);
+  } catch (error) {
+    console.error("Erreur snipe :", error);
+  }
 });
 
 // ─── MESSAGES ────────────────────────────────────────────
