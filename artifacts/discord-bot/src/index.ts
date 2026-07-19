@@ -85,6 +85,7 @@ import {
   sclearsnipeCommand,
   cacheMessageForSnipe,
   handleDeletedMessage,
+  handleBulkDeletedMessages,
 } from "./commands/chichi.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
@@ -159,6 +160,9 @@ for (const cmd of [
   permvocCommand,
   permremoveCommand,
   chichiCommand,
+  sCommand,
+  isCommand,
+  sclearsnipeCommand,
   verificationCommand,
   unblCommand,
   antiraidCommand,
@@ -360,6 +364,23 @@ client.on(Events.MessageDelete, async (message) => {
     handleDeletedMessage(message as Message);
   } catch (error) {
     console.error("Erreur snipe :", error);
+  }
+});
+
+client.on(Events.MessageBulkDelete, async (messages) => {
+  const firstMessage = messages.first();
+
+  if (
+    !firstMessage?.guild ||
+    firstMessage.guild.id !== MAIN_GUILD_ID
+  ) {
+    return;
+  }
+
+  try {
+    handleBulkDeletedMessages(messages);
+  } catch (error) {
+    console.error("Erreur bulk snipe :", error);
   }
 });
 
