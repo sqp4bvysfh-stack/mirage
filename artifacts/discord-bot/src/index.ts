@@ -73,6 +73,10 @@ import {
   handleVerificationJoin,
   handleVerificationInteraction,
 } from "./commands/verification.js";
+import {
+  permimgCommand,
+  permvocCommand,
+} from "./commands/perm.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -142,6 +146,8 @@ for (const cmd of [
   blCommand,
   recrutementCommand,
   profilCommand,
+  permimgCommand,
+  permvocCommand,
   verificationCommand,
   unblCommand,
   antiraidCommand,
