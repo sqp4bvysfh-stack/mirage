@@ -1,8 +1,13 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   EmbedBuilder,
+  MessageFlags,
+  type Collection,
+  type Interaction,
   type Message,
   type PartialMessage,
-  type Collection,
   type Snowflake,
 } from "discord.js";
 
@@ -32,6 +37,17 @@ const MAX_CACHED_MESSAGES = 1000;
 
 const deletedMessages = new Map<string, SnipedMessage[]>();
 const messageCache = new Map<string, CachedMessage>();
+
+type SnipePanelSession = {
+  userId: string;
+  channelId: string;
+  entries: SnipedMessage[];
+  index: number;
+  expiresAt: number;
+};
+
+const snipePanels = new Map<string, SnipePanelSession>();
+const SNIPE_PANEL_DURATION = 5 * 60 * 1000;
 
 export function cacheMessageForSnipe(message: Message): void {
   if (!message.guild) return;
@@ -181,6 +197,101 @@ function makeEmbed(
   return embed;
 }
 
+function makeNavigationRow(
+  sessionId: string,
+  index: number,
+  total: number,
+): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`snipe_prev_${sessionId}`)
+      .setEmoji("⬅️")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(index <= 0),
+
+    new ButtonBuilder()
+      .setCustomId(`snipe_page_${sessionId}`)
+      .setLabel(`${index + 1}/${total}`)
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(true),
+
+    new ButtonBuilder()
+      .setCustomId(`snipe_next_${sessionId}`)
+      .setEmoji("➡️")
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(index >= total - 1),
+  );
+}
+
+export async function handleSnipeInteraction(
+  interaction: Interaction,
+): Promise<void> {
+  if (!interaction.isButton()) return;
+  if (!interaction.customId.startsWith("snipe_")) return;
+
+  const parts = interaction.customId.split("_");
+  const action = parts[1];
+  const sessionId = parts.slice(2).join("_");
+
+  if (action === "page") {
+    await interaction.deferUpdate().catch(() => {});
+    return;
+  }
+
+  const session = snipePanels.get(sessionId);
+
+  if (!session || session.expiresAt < Date.now()) {
+    snipePanels.delete(sessionId);
+
+    await interaction.reply({
+      content: "❌ Ce panneau a expiré. Relance `*is`.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  if (interaction.user.id !== session.userId) {
+    await interaction.reply({
+      content: "❌ Seule la personne qui a lancé la commande peut utiliser ces boutons.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
+
+  if (action === "prev") {
+    session.index = Math.max(0, session.index - 1);
+  }
+
+  if (action === "next") {
+    session.index = Math.min(
+      session.entries.length - 1,
+      session.index + 1,
+    );
+  }
+
+  snipePanels.set(sessionId, session);
+
+  await interaction.update({
+    embeds: [
+      makeEmbed(
+        session.entries[session.index],
+        session.index + 1,
+      ),
+    ],
+    components: [
+      makeNavigationRow(
+        sessionId,
+        session.index,
+        session.entries.length,
+      ),
+    ],
+    allowedMentions: {
+      parse: [],
+      repliedUser: false,
+    },
+  });
+}
+
 export const chichiCommand: Command = {
   name: "chichi",
   description: "Affiche les derniers messages supprimés",
@@ -260,17 +371,45 @@ export const chichiCommand: Command = {
         return;
       }
 
-      await message.reply({
-        embeds: history
-          .slice(0, MAX_SNIPE_MESSAGES)
-          .map((entry, index) =>
-            makeEmbed(entry, index + 1),
+      const entries = history.slice(
+        0,
+        MAX_SNIPE_MESSAGES,
+      );
+
+      const sessionId = `${message.id}_${Date.now()}`;
+
+      snipePanels.set(sessionId, {
+        userId: message.author.id,
+        channelId: message.channelId,
+        entries,
+        index: 0,
+        expiresAt: Date.now() + SNIPE_PANEL_DURATION,
+      });
+
+      const panel = await message.reply({
+        embeds: [
+          makeEmbed(entries[0], 1),
+        ],
+        components: [
+          makeNavigationRow(
+            sessionId,
+            0,
+            entries.length,
           ),
+        ],
         allowedMentions: {
           parse: [],
           repliedUser: false,
         },
       });
+
+      setTimeout(async () => {
+        snipePanels.delete(sessionId);
+
+        await panel.edit({
+          components: [],
+        }).catch(() => {});
+      }, SNIPE_PANEL_DURATION);
 
       return;
     }
