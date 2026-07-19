@@ -290,7 +290,3 @@ export const unblCommand: Command = {
     });
   },
 };
-
-    await sendServerLog(message.guild, { embeds: [logEmbed] });
-  },
-};
