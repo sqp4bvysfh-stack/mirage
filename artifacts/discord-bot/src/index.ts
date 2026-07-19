@@ -149,6 +149,15 @@ for (const cmd of [
   commands.set(cmd.name, cmd);
 }
 
+console.log(
+  "📦 Commandes chargées :",
+  [...commands.keys()].join(", "),
+);
+console.log(
+  "✅ Vérification enregistrée :",
+  commands.has("verification"),
+);
+
 // ─── CLIENT ───────────────────────────────────────────────
 const client = new Client({
   intents: [
@@ -399,7 +408,17 @@ client.on(Events.MessageCreate, async (message: Message) => {
   if (!commandName) return;
 
   const command = commands.get(commandName);
-  if (!command) return;
+
+  if (!command) {
+    await message.reply(
+      `❌ Commande inconnue : \`${PREFIX}${commandName}\`.`,
+    ).catch(() => {});
+
+    console.warn(
+      `⚠️ Commande inconnue reçue : ${commandName}`,
+    );
+    return;
+  }
 
   try {
     await command.execute(message, args);
