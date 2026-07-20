@@ -164,35 +164,50 @@ async function resolveTarget(
   const referenceId =
     message.reference?.messageId;
 
-  if (!referenceId) {
-    return null;
+  if (referenceId) {
+    const referencedMessage =
+      await message.channel.messages
+        .fetch(referenceId)
+        .catch(() => null);
+
+    if (referencedMessage) {
+      const member =
+        await message.guild.members
+          .fetch(
+            referencedMessage.author.id,
+          )
+          .catch(() => null);
+
+      if (member) {
+        return {
+          member,
+          user: await fetchFullUser(
+            message,
+            member,
+          ),
+        };
+      }
+    }
   }
 
-  const referencedMessage =
-    await message.channel.messages
-      .fetch(referenceId)
-      .catch(() => null);
-
-  if (!referencedMessage) {
-    return null;
-  }
-
-  const member =
+  // Sans mention ni réponse :
+  // affiche le profil de l’auteur de la commande.
+  const authorMember =
     await message.guild.members
       .fetch(
-        referencedMessage.author.id,
+        message.author.id,
       )
       .catch(() => null);
 
-  if (!member) {
+  if (!authorMember) {
     return null;
   }
 
   return {
-    member,
+    member: authorMember,
     user: await fetchFullUser(
       message,
-      member,
+      authorMember,
     ),
   };
 }
@@ -451,7 +466,7 @@ export async function handleChichiMediaMessage(
 
   if (!target) {
     await message.reply(
-      "❌ Mentionne un membre ou réponds à son message.",
+      "❌ Impossible de retrouver ce membre.",
     );
 
     return true;
