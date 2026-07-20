@@ -39,7 +39,11 @@ import { iablockCommand } from "./commands/iablock.js";
 import { isIaBlocked } from "./utils/iaBlock.js";
 import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
 import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
-import { originesCommand, originesPanels } from "./commands/origines.js";
+import {
+  originesCommand,
+  handleOriginesReactionAdd,
+  handleOriginesReactionRemove,
+} from "./commands/origines.js";
 import { clearCommand } from "./commands/clear.js";
 import { lockCommand, unlockCommand } from "./commands/lock.js";
 import { giveawayCommand, rerollCommand, topGiveawayCommand } from "./commands/giveaway.js";
@@ -379,15 +383,7 @@ client.on(Events.MessageReactionAdd, async (reaction, user) => {
   if (reaction.message.guildId !== MAIN_GUILD_ID) return;
 
   await handleProfilReactionAdd(reaction, user);
-
-  const config = originesPanels.get(reaction.message.id);
-  if (!config) return;
-  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
-  if (!cfg) return;
-  const guild  = reaction.message.guild;
-  const member = await guild?.members.fetch(user.id).catch(() => null);
-  if (!member) return;
-  await member.roles.add(cfg.roleId).catch(() => {});
+  await handleOriginesReactionAdd(reaction, user);
 });
 
 // ─── ORIGINES — réaction retirée ─────────────────────────
@@ -396,14 +392,7 @@ client.on(Events.MessageReactionRemove, async (reaction, user) => {
   if (reaction.message.guildId !== MAIN_GUILD_ID) return;
 
   await handleProfilReactionRemove(reaction, user);
-  const config = originesPanels.get(reaction.message.id);
-  if (!config) return;
-  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
-  if (!cfg) return;
-  const guild  = reaction.message.guild;
-  const member = await guild?.members.fetch(user.id).catch(() => null);
-  if (!member) return;
-  await member.roles.remove(cfg.roleId).catch(() => {});
+  await handleOriginesReactionRemove(reaction, user);
 });
 
 // ─── SNIPE — MESSAGES SUPPRIMÉS ───────────────────────────
