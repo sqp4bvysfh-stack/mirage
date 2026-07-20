@@ -17,7 +17,7 @@ type HelpCategory =
   | "members"
   | "moderation"
   | "tickets"
-  | "config"
+  | "tools"
   | "ia"
   | "custom"
   | "owner";
@@ -220,8 +220,9 @@ const COMMANDS: HelpCommandInfo[] = [
     description: "Publie le panneau de vérification.",
     usage: "*verification setup",
     permission: "Modérateur",
-    category: "config",
+    category: "custom",
   },
+
   {
     name: "profil",
     description: "Publie les panneaux Couleurs, Genre et Âge.",
@@ -237,41 +238,80 @@ const COMMANDS: HelpCommandInfo[] = [
     category: "custom",
   },
   {
-    name: "boostsetup",
-    description: "Affiche la configuration du système de boost.",
-    usage: "*boostsetup",
-    permission: "Modérateur",
-    category: "config",
-  },
-  {
-    name: "photo",
-    description: "Affiche la configuration du salon photo.",
-    usage: "*photo",
-    permission: "Modérateur",
-    category: "config",
-  },
-  {
     name: "iablock",
     description: "Bloque ou débloque l’IA dans un salon.",
     usage: "*iablock ...",
     permission: "Modérateur",
     category: "ia",
   },
-  {
-    name: "pp block",
-    description: "Désactive Chichi PP et Chichi Banner.",
-    usage: "*pp block",
-    permission: "Modérateur",
-    category: "config",
-  },
-  {
-    name: "pp unblock",
-    description: "Réactive Chichi PP et Chichi Banner.",
-    usage: "*pp unblock",
-    permission: "Modérateur",
-    category: "config",
-  },
 
+
+  {
+    name: "giveaway",
+    description: "Lance un giveaway avec les conditions de ton choix.",
+    usage: "*giveaway <durée> [nombre_gagnants] <prix>",
+    permission: "Modérateur",
+    example: "*giveaway 1h 3 Nitro",
+    category: "tools",
+  },
+  {
+    name: "giveaway end",
+    description: "Termine immédiatement le dernier giveaway actif du salon, ou un giveaway précis.",
+    usage: "*giveaway end [ID_message]",
+    permission: "Modérateur",
+    example: "*giveaway end",
+    category: "tools",
+  },
+  {
+    name: "topgiveaway",
+    description: "Lance un giveaway avec plusieurs gagnants et un avantage pour les boosters.",
+    usage: "*topgiveaway <durée> <nombre_gagnants> <prix>",
+    permission: "Modérateur",
+    example: "*topgiveaway 2j 10 Nitro",
+    category: "tools",
+  },
+  {
+    name: "reroll",
+    description: "Relance le tirage d’un giveaway.",
+    usage: "*reroll <ID_message>",
+    permission: "Modérateur",
+    category: "tools",
+  },
+  {
+    name: "poll",
+    description: "Crée un sondage avec plusieurs choix.",
+    usage: "*poll \"question\" \"choix 1\" \"choix 2\"",
+    permission: "Modérateur",
+    category: "tools",
+  },
+  {
+    name: "say",
+    description: "Fait envoyer un message simple par Chichi.",
+    usage: "*say texte",
+    permission: "Modérateur",
+    category: "tools",
+  },
+  {
+    name: "send",
+    description: "Fait envoyer une image ou un fichier par Chichi.",
+    usage: "*send + fichier",
+    permission: "Modérateur",
+    category: "tools",
+  },
+  {
+    name: "talk",
+    description: "Envoie un message formaté avec une image, un GIF, une vidéo ou un fichier optionnel.",
+    usage: "*talk [#salon]",
+    permission: "Modérateur",
+    category: "tools",
+  },
+  {
+    name: "confess",
+    description: "Configure le système de confessions anonymes.",
+    usage: "*confess setup",
+    permission: "Modérateur",
+    category: "tools",
+  },
   {
     name: "massban",
     description: "Bannit tous les membres possédant un rôle.",
@@ -366,16 +406,16 @@ function buildMenu(userId: string): ActionRowBuilder<StringSelectMenuBuilder> {
           emoji: "🛡️",
         },
         {
+          label: "Outils",
+          description: "Giveaways, sondages et messages",
+          value: "tools",
+          emoji: "🛠️",
+        },
+        {
           label: "Tickets",
           description: "Tickets et demandes",
           value: "tickets",
           emoji: "🎫",
-        },
-        {
-          label: "Configuration",
-          description: "Réglages du serveur",
-          value: "config",
-          emoji: "⚙️",
         },
         {
           label: "IA",
@@ -420,8 +460,8 @@ function buildHomeEmbed(botAvatar?: string): EmbedBuilder {
         inline: true,
       },
       {
-        name: "⚙️ Configuration",
-        value: `${COMMANDS.filter((c) => ["config", "tickets", "custom"].includes(c.category)).length} commandes`,
+        name: "🛠️ Outils",
+        value: `${COMMANDS.filter((c) => c.category === "tools").length} commandes`,
         inline: true,
       },
     )
@@ -441,7 +481,7 @@ const CATEGORY_TITLES: Record<HelpCategory, string> = {
   members: "👤 Commandes membres",
   moderation: "🛡️ Modération",
   tickets: "🎫 Tickets",
-  config: "⚙️ Configuration",
+  tools: "🛠️ Outils",
   ia: "🤖 Intelligence artificielle",
   custom: "🎨 Personnalisation",
   owner: "👑 Commandes Owner",
