@@ -59,6 +59,29 @@ async function downloadAttachments(
   return files;
 }
 
+
+function extractCustomEmojis(content: string) {
+  return [...content.matchAll(/<(a?):([a-zA-Z0-9_]+):(\d{17,20})>/g)].map((match) => ({
+    raw: match[0],
+    name: match[2],
+    id: match[3],
+  }));
+}
+
+function sanitizeCustomEmojis(message: Message, content: string): string {
+  if (!message.guild) return content;
+
+  let result = content;
+
+  for (const emoji of extractCustomEmojis(content)) {
+    if (!message.guild.emojis.cache.has(emoji.id)) {
+      result = result.replace(emoji.raw, `:${emoji.name}:`);
+    }
+  }
+
+  return result;
+}
+
 export const talkCommand: Command = {
   name: "talk",
   description:
@@ -210,10 +233,13 @@ export const talkCommand: Command = {
     }
 
     try {
+      const finalContent =
+        sanitizeCustomEmojis(message, contenu);
+
       await (cible as TextChannel).send({
         content:
-          contenu.trim().length > 0
-            ? contenu
+          finalContent.trim().length > 0
+            ? finalContent
             : undefined,
         files,
         allowedMentions: {
