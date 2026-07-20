@@ -88,6 +88,7 @@ import {
   handleBulkDeletedMessages,
   handleSnipeInteraction,
 } from "./commands/chichi.js";
+import { ppCommand, handleChichiMediaMessage } from "./commands/media.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -164,6 +165,7 @@ for (const cmd of [
   permvocCommand,
   permremoveCommand,
   chichiCommand,
+  ppCommand,
   sCommand,
   isCommand,
   sclearsnipeCommand,
@@ -273,6 +275,21 @@ client.on(Events.GuildMemberAdd, async (member) => {
     }
     joinTracker.set(guildId, []);
   }
+
+  const welcomeChannelId =
+    getConfig(member.guild.id).welcomeChannel ??
+    DEFAULT_WELCOME_CHANNEL;
+
+  const salon =
+    member.guild.channels.cache.get(
+      welcomeChannelId,
+    );
+
+  if (salon?.isTextBased()) {
+    await salon
+      .send(`👋 Bienvenue ${member}`)
+      .catch(() => {});
+  }
 });
 
 // ─── BLACKLIST — REBAN APRÈS UNBAN MANUEL ────────────────
@@ -293,13 +310,7 @@ client.on(Events.GuildBanRemove, async (ban) => {
 // ─── WELCOME ─────────────────────────────────────────────
 const DEFAULT_WELCOME_CHANNEL = "1523502660295069777";
 
-client.on(Events.GuildMemberAdd, async (member) => {
-  if (member.guild.id !== MAIN_GUILD_ID) return;
 
-  const welcomeChannelId = getConfig(member.guild.id).welcomeChannel ?? DEFAULT_WELCOME_CHANNEL;
-  const salon = member.guild.channels.cache.get(welcomeChannelId);
-  if (salon?.isTextBased()) salon.send(`👋 Bienvenue ${member}`).catch(() => {});
-});
 
 // ─── BOOST ───────────────────────────────────────────────
 client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
@@ -439,6 +450,15 @@ client.on(Events.MessageCreate, async (message: Message) => {
 
   // ── ANTI-SPAM ──────────────────────────────────────────────────────────
   if (await handleAntiSpam(message)) return;
+
+  // ── CHICHI PP / BANNER SANS PRÉFIXE ─────────────────────────────────────
+  if (
+    await handleChichiMediaMessage(
+      message,
+    )
+  ) {
+    return;
+  }
 
   // ── PHOTO SYSTEM ─────────────────────────────────────────────────────────
   // Si le salon est configuré en mode photo, photo.ts gère seul
