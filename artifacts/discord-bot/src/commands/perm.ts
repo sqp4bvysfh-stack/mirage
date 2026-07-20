@@ -7,6 +7,7 @@ import {
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
 
+const MEMBER_ROLE_ID = "1362527149378240814";
 const PERM_IMG_ROLE_ID = "1528251444086444082";
 const PERM_VOC_ROLE_ID = "1528251644113059922";
 
@@ -134,11 +135,30 @@ function createPermCommand(
         return;
       }
 
+      const hadMemberRole =
+        target.roles.cache.has(MEMBER_ROLE_ID);
+
       try {
         await target.roles.add(
           role,
           `Permission ${config.label} ajoutée par ${message.author.tag}`,
         );
+
+        const refreshedTarget =
+          await message.guild.members
+            .fetch(target.id)
+            .catch(() => null);
+
+        if (
+          hadMemberRole &&
+          refreshedTarget &&
+          !refreshedTarget.roles.cache.has(MEMBER_ROLE_ID)
+        ) {
+          await refreshedTarget.roles.add(
+            MEMBER_ROLE_ID,
+            "Protection du rôle Membres après ajout d’une permission",
+          );
+        }
       } catch (error) {
         console.error(
           `❌ Erreur ajout permission ${config.label}:`,
