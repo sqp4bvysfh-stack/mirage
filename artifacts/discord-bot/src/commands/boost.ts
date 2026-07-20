@@ -1,535 +1,428 @@
-import { createServer } from "node:http";
 import {
-  Client,
-  GatewayIntentBits,
-  Partials,
-  Collection,
-  Events,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+  ChannelType,
+  EmbedBuilder,
+  MessageFlags,
+  ModalBuilder,
+  TextInputBuilder,
+  TextInputStyle,
+  type GuildMember,
+  type Interaction,
+  type Message,
 } from "discord.js";
 
-import type { Message } from "discord.js";
-import type { Command } from "./types.js";
+import type { Command } from "../types.js";
+import { isModerator } from "../utils/modCheck.js";
+import { sendServerLog } from "../utils/logs.js";
 
-import { getConfig } from "./utils/serverConfig.js";
-import { registerLogs } from "./utils/logs.js";
+// ─── Configuration fixe No Chill ───────────────────────────
+const BOOST_CHANNEL_ID = "1528077192615952584";
+const BOOST_REQUEST_CHANNEL_ID = "1528100158858858636";
 
-// ─── COMMANDS ─────────────────────────────────────────────
-import { pingCommand } from "./commands/ping.js";
-import { aideCommand, handleAideInteraction } from "./commands/aide.js";
-import { infoCommand } from "./commands/info.js";
-import { loupgarouCommand, finpartieCommand } from "./commands/loupgarou.js";
-import { rolesCommand } from "./commands/roles.js";
-import { roleaddCommand } from "./commands/roleadd.js";
-import { roleremoveCommand } from "./commands/roleremove.js";
-import { sayCommand } from "./commands/say.js";
-import { banCommand } from "./commands/ban.js";
-import { tempbanCommand } from "./commands/tempban.js";
-import { muteCommand } from "./commands/mute.js";
-import { kickCommand } from "./commands/kick.js";
-import { warnCommand } from "./commands/warn.js";
-import { quizCommand } from "./commands/quiz.js";
-import { undercoverCommand } from "./commands/undercover.js";
-import { telephoneCommand } from "./commands/telephone.js";
-import { twerkCommand } from "./commands/twerk.js";
-import { sendCommand } from "./commands/send.js";
-import { unmuteCommand } from "./commands/unmute.js";
-import { unbanCommand } from "./commands/unban.js";
-import { iaCommand, repondreIA, shouldTriggerIA } from "./commands/ia.js";
-import { iablockCommand } from "./commands/iablock.js";
-import { isIaBlocked } from "./utils/iaBlock.js";
-import { confessionCommand, handleConfessionInteraction } from "./commands/confession.js";
-import { ticketCommand, handleTicketInteraction } from "./commands/ticket.js";
-import { originesCommand, originesPanels } from "./commands/origines.js";
-import { clearCommand } from "./commands/clear.js";
-import { lockCommand, unlockCommand } from "./commands/lock.js";
-import { giveawayCommand, rerollCommand, topGiveawayCommand } from "./commands/giveaway.js";
-import { pollCommand } from "./commands/poll.js";
-import { boostSetupCommand, handleBoostMember, handleBoostInteraction } from "./commands/boost.js";
-import { talkCommand } from "./commands/talk.js";
-import { fermetureCommand, ouvertureCommand } from "./commands/fermeture.js";
-import { configCommand } from "./commands/config.js";
-import { massbanCommand, delsalonCommand, broadcastCommand, masskickCommand, parleCommand } from "./commands/owner.js";
-import { userinfoCommand } from "./commands/userinfo.js";
-import { statsCommand, incrementMessages } from "./commands/stats.js";
-import { dmCommand } from "./commands/dm.js";
-import { serverprofileCommand } from "./commands/serverprofile.js";
-import { botprofilCommand } from "./commands/botprofil.js";
-import { jailCommand, unjailCommand } from "./commands/jail.js";
-import { photoCommand, handlePhotoSystem, getPhotoEmoji } from "./commands/photo.js";
-import { blCommand, unblCommand } from "./commands/blacklist.js";
-import { getBlacklistEntry } from "./utils/blacklist.js";
-import { antiraidCommand } from "./commands/antiraid.js";
-import { isAntiRaidEnabled } from "./utils/antiraid.js";
-import { antispamCommand } from "./commands/antispam.js";
-import { handleAntiSpam } from "./utils/antispam.js";
-import { recrutementCommand } from "./commands/recrutement.js";
-import {
-  profilCommand,
-  handleProfilReactionAdd,
-  handleProfilReactionRemove,
-} from "./commands/profil.js";
-import {
-  verificationCommand,
-  handleVerificationJoin,
-  handleVerificationInteraction,
-} from "./commands/verification.js";
-import {
-  permimgCommand,
-  permvocCommand,
-  permremoveCommand,
-} from "./commands/perm.js";
-import {
-  chichiCommand,
-  sCommand,
-  isCommand,
-  sclearsnipeCommand,
-  cacheMessageForSnipe,
-  handleDeletedMessage,
-  handleBulkDeletedMessages,
-  handleSnipeInteraction,
-} from "./commands/chichi.js";
+// ─── Détection du boost ────────────────────────────────────
+export async function handleBoostMember(
+  oldMember: GuildMember,
+  newMember: GuildMember,
+): Promise<void> {
+  const vientDeBooster =
+    !oldMember.premiumSince &&
+    Boolean(newMember.premiumSince);
 
-// ─── TOKEN ────────────────────────────────────────────────
-const token = process.env.DISCORD_BOT_TOKEN;
-if (!token) {
-  console.error("❌ DISCORD_BOT_TOKEN manquant");
-  process.exit(1);
-}
+  if (!vientDeBooster) return;
 
-export const PREFIX = "*";
-const MAIN_GUILD_ID = "1362520000426152036";
-const MEMBER_ROLE_ID = "1362527149378240814";
-const PERM_IMG_ROLE_ID = "1528251444086444082";
-const PERM_VOC_ROLE_ID = "1528251644113059922";
-
-// ─── COLLECTIONS ─────────────────────────────────────────
-const commands = new Collection<string, Command>();
-
-for (const cmd of [
-  pingCommand,
-  aideCommand,
-  infoCommand,
-  loupgarouCommand,
-  finpartieCommand,
-  rolesCommand,
-  roleaddCommand,
-  roleremoveCommand,
-  sayCommand,
-  banCommand,
-  tempbanCommand,
-  muteCommand,
-  kickCommand,
-  warnCommand,
-  quizCommand,
-  undercoverCommand,
-  telephoneCommand,
-  twerkCommand,
-  sendCommand,
-  unmuteCommand,
-  unbanCommand,
-  iaCommand,
-  iablockCommand,
-  confessionCommand,
-  clearCommand,
-  lockCommand,
-  unlockCommand,
-  giveawayCommand,
-  rerollCommand,
-  topGiveawayCommand,
-  pollCommand,
-  ticketCommand,
-  originesCommand,
-  boostSetupCommand,
-  talkCommand,
-  fermetureCommand,
-  ouvertureCommand,
-  configCommand,
-  massbanCommand,
-  delsalonCommand,
-  broadcastCommand,
-  masskickCommand,
-  parleCommand,
-  userinfoCommand,
-  statsCommand,
-  dmCommand,
-  serverprofileCommand,
-  botprofilCommand,
-  jailCommand,
-  unjailCommand,
-  photoCommand,
-  blCommand,
-  recrutementCommand,
-  profilCommand,
-  permimgCommand,
-  permvocCommand,
-  permremoveCommand,
-  chichiCommand,
-  sCommand,
-  isCommand,
-  sclearsnipeCommand,
-  verificationCommand,
-  unblCommand,
-  antiraidCommand,
-  antispamCommand,]) {
-  commands.set(cmd.name, cmd);
-}
-
-console.log(
-  "📦 Commandes chargées :",
-  [...commands.keys()].join(", "),
-);
-console.log(
-  "✅ Vérification enregistrée :",
-  commands.has("verification"),
-);
-
-// ─── CLIENT ───────────────────────────────────────────────
-const client = new Client({
-  intents: [
-    GatewayIntentBits.Guilds,
-    GatewayIntentBits.GuildMessages,
-    GatewayIntentBits.MessageContent,
-    GatewayIntentBits.GuildMembers,
-    GatewayIntentBits.DirectMessages,
-    GatewayIntentBits.GuildMessageReactions,
-    GatewayIntentBits.GuildPresences,
-    GatewayIntentBits.GuildVoiceStates,
-  ],
-  partials: [
-    Partials.Message,
-    Partials.Channel,
-    Partials.Reaction,
-    Partials.GuildMember,
-  ],
-});
-
-// ─── LOGS ────────────────────────────────────────────────
-registerLogs(client);
-
-// ─── READY ───────────────────────────────────────────────
-client.once(Events.ClientReady, async (c) => {
-  console.log(`✅ Bot en ligne : ${c.user.tag}`);
-
-  for (const guild of c.guilds.cache.values()) {
-    if (guild.id === MAIN_GUILD_ID) continue;
-
-    console.log(`🚪 Serveur non autorisé quitté : ${guild.name}`);
-    await guild.leave().catch((err) => {
-      console.error(`Impossible de quitter ${guild.name}:`, err);
-    });
-  }
-});
-
-// ─── ANTI RAID ────────────────────────────────────────────
-const RAID_THRESHOLD = 5;
-const RAID_WINDOW_MS = 10_000;
-const joinTracker    = new Map<string, { time: number; memberId: string }[]>();
-const raidMode       = new Set<string>();
-
-client.on(Events.GuildMemberAdd, async (member) => {
-  if (member.guild.id !== MAIN_GUILD_ID) return;
-
-  await handleVerificationJoin(member);
-
-  const blacklistEntry = getBlacklistEntry(member.id);
-  if (blacklistEntry) {
-    await member.ban({
-      deleteMessageSeconds: 60 * 60 * 24,
-      reason: `Reban automatique — blacklist : ${blacklistEntry.reason}`,
-    }).catch((error) => {
-      console.error(`Impossible de reban ${member.user.tag} :`, error);
-    });
-    return;
-  }
-
-  if (!isAntiRaidEnabled()) return;
-
-  const guildId = member.guild.id;
-  const now     = Date.now();
-
-  const recent = (joinTracker.get(guildId) ?? []).filter(e => now - e.time < RAID_WINDOW_MS);
-  recent.push({ time: now, memberId: member.id });
-  joinTracker.set(guildId, recent);
-
-  if (recent.length >= RAID_THRESHOLD) {
-    for (const { memberId } of recent) {
-      const m = await member.guild.members.fetch(memberId).catch(() => null);
-      if (!m) continue;
-      const ageDays = (now - m.user.createdTimestamp) / 86_400_000;
-      if (ageDays < 7) await m.kick("Anti-raid : compte récent").catch(() => {});
-    }
-
-    if (!raidMode.has(guildId)) {
-      raidMode.add(guildId);
-      setTimeout(() => raidMode.delete(guildId), 30_000);
-
-      const alert = member.guild.systemChannel ?? member.guild.channels.cache.find(c => c.isTextBased());
-      if (alert?.isTextBased()) {
-        alert.send(
-          `🚨 **ALERTE RAID DÉTECTÉE** — ${recent.length} arrivées en ${RAID_WINDOW_MS / 1000}s.\n` +
-          `Les comptes de moins de 7 jours ont été kick automatiquement.`
-        ).catch(() => {});
-      }
-    }
-    joinTracker.set(guildId, []);
-  }
-});
-
-// ─── BLACKLIST — REBAN APRÈS UNBAN MANUEL ────────────────
-client.on(Events.GuildBanRemove, async (ban) => {
-  if (ban.guild.id !== MAIN_GUILD_ID) return;
-
-  const entry = getBlacklistEntry(ban.user.id);
-  if (!entry) return;
-
-  await ban.guild.members.ban(ban.user.id, {
-    deleteMessageSeconds: 60 * 60 * 24,
-    reason: `Reban automatique — toujours blacklisté : ${entry.reason}`,
-  }).catch((error) => {
-    console.error(`Impossible de reban ${ban.user.tag} après unban manuel :`, error);
-  });
-});
-
-// ─── WELCOME ─────────────────────────────────────────────
-const DEFAULT_WELCOME_CHANNEL = "1523502660295069777";
-
-client.on(Events.GuildMemberAdd, async (member) => {
-  if (member.guild.id !== MAIN_GUILD_ID) return;
-
-  const welcomeChannelId = getConfig(member.guild.id).welcomeChannel ?? DEFAULT_WELCOME_CHANNEL;
-  const salon = member.guild.channels.cache.get(welcomeChannelId);
-  if (salon?.isTextBased()) salon.send(`👋 Bienvenue ${member}`).catch(() => {});
-});
-
-// ─── BOOST ───────────────────────────────────────────────
-client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
-  if (newMember.guild.id !== MAIN_GUILD_ID) return;
-
-  try {
-    await handleBoostMember(
-      oldMember as import("discord.js").GuildMember,
-      newMember,
-    );
-  } catch (err) {
-    console.error("Erreur boost:", err);
-  }
-
-  // Protection des membres déjà vérifiés :
-  // l'ajout d'une permission ne doit jamais retirer le rôle Membres.
-  const hadMemberRole =
-    oldMember.roles.cache.has(MEMBER_ROLE_ID);
-
-  const lostMemberRole =
-    hadMemberRole &&
-    !newMember.roles.cache.has(MEMBER_ROLE_ID);
-
-  const hasSpecialPermission =
-    newMember.roles.cache.has(PERM_IMG_ROLE_ID) ||
-    newMember.roles.cache.has(PERM_VOC_ROLE_ID);
-
-  if (lostMemberRole && hasSpecialPermission) {
-    console.warn(
-      `⚠️ Le rôle Membres a été retiré à ${newMember.user.tag} après l'ajout d'une permission. Restauration automatique.`,
-    );
-
-    await newMember.roles
-      .add(
-        MEMBER_ROLE_ID,
-        "Protection : conservation du rôle Membres avec les permissions spéciales",
-      )
-      .catch((error) => {
-        console.error(
-          `❌ Impossible de restaurer Membres à ${newMember.user.tag}:`,
-          error,
-        );
-      });
-  }
-});
-
-// ─── INTERACTIONS ────────────────────────────────────────
-client.on(Events.InteractionCreate, async (interaction) => {
-  if (interaction.guildId !== MAIN_GUILD_ID) return;
-
-  try {
-    await handleConfessionInteraction(interaction);
-    await handleTicketInteraction(interaction);
-    await handleAideInteraction(interaction);
-    await handleBoostInteraction(interaction);
-    await handleVerificationInteraction(interaction);
-    await handleSnipeInteraction(interaction);
-  } catch (err) {
-    console.error("Erreur interaction:", err);
-  }
-});
-
-// ─── ORIGINES — réaction ajoutée ─────────────────────────
-client.on(Events.MessageReactionAdd, async (reaction, user) => {
-  if (user.bot) return;
-  if (reaction.message.guildId !== MAIN_GUILD_ID) return;
-
-  await handleProfilReactionAdd(reaction, user);
-
-  const config = originesPanels.get(reaction.message.id);
-  if (!config) return;
-  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
-  if (!cfg) return;
-  const guild  = reaction.message.guild;
-  const member = await guild?.members.fetch(user.id).catch(() => null);
-  if (!member) return;
-  await member.roles.add(cfg.roleId).catch(() => {});
-});
-
-// ─── ORIGINES — réaction retirée ─────────────────────────
-client.on(Events.MessageReactionRemove, async (reaction, user) => {
-  if (user.bot) return;
-  if (reaction.message.guildId !== MAIN_GUILD_ID) return;
-
-  await handleProfilReactionRemove(reaction, user);
-  const config = originesPanels.get(reaction.message.id);
-  if (!config) return;
-  const cfg    = config.find(o => o.emoji === reaction.emoji.name);
-  if (!cfg) return;
-  const guild  = reaction.message.guild;
-  const member = await guild?.members.fetch(user.id).catch(() => null);
-  if (!member) return;
-  await member.roles.remove(cfg.roleId).catch(() => {});
-});
-
-// ─── SNIPE — MESSAGES SUPPRIMÉS ───────────────────────────
-client.on(Events.MessageDelete, async (message) => {
-  if (!message.guild || message.guild.id !== MAIN_GUILD_ID) return;
-
-  try {
-    handleDeletedMessage(message as Message);
-  } catch (error) {
-    console.error("Erreur snipe :", error);
-  }
-});
-
-client.on(Events.MessageBulkDelete, async (messages) => {
-  const firstMessage = messages.first();
+  const channel =
+    await newMember.guild.channels
+      .fetch(BOOST_CHANNEL_ID)
+      .catch(() => null);
 
   if (
-    !firstMessage?.guild ||
-    firstMessage.guild.id !== MAIN_GUILD_ID
+    !channel ||
+    channel.type !== ChannelType.GuildText
   ) {
+    console.error(
+      `❌ Salon boost introuvable ou invalide : ${BOOST_CHANNEL_ID}`,
+    );
     return;
   }
 
-  try {
-    handleBulkDeletedMessages(messages);
-  } catch (error) {
-    console.error("Erreur bulk snipe :", error);
-  }
-});
+  const embed =
+    new EmbedBuilder()
+      .setColor(0x6d28d9)
+      .setTitle("✦ No Chill • Nouveau boost")
+      .setDescription(
+        `${newMember} vient de booster le serveur ! 🚀\n\n` +
+        "Merci infiniment pour ton soutien. Tu peux maintenant réclamer " +
+        "ton **rôle personnalisé**.\n" +
+        "*(nom, couleur et emoji de ton choix)*",
+      )
+      .setThumbnail(
+        newMember.user.displayAvatarURL({
+          size: 128,
+        }),
+      )
+      .setFooter({
+        text:
+          `Le serveur a ` +
+          `${newMember.guild.premiumSubscriptionCount ?? 0} boost(s) au total !`,
+      })
+      .setTimestamp();
 
-// ─── MESSAGES ────────────────────────────────────────────
-const LIENS_AUTORISES       = new Set(["nci"]);
-const INVITE_REGEX          = /discord(?:\.gg|(?:app)?\.com\/invite)\/([a-zA-Z0-9-]+)/gi;
-const DEFAULT_ANTI_PUB_ROLE = "1476499085748862986";
+  const row =
+    new ActionRowBuilder<ButtonBuilder>()
+      .addComponents(
+        new ButtonBuilder()
+          .setCustomId(
+            `role_perso_demande:${newMember.id}`,
+          )
+          .setLabel("Demander mon rôle perso")
+          .setEmoji("🎨")
+          .setStyle(ButtonStyle.Primary),
+      );
 
-client.on(Events.MessageCreate, async (message: Message) => {
-  if (message.author.bot) return;
-  if (!message.guild || message.guild.id !== MAIN_GUILD_ID) return;
+  await channel
+    .send({
+      embeds: [embed],
+      components: [row],
+    })
+    .catch((error) => {
+      console.error(
+        "❌ Impossible d’envoyer l’annonce boost :",
+        error,
+      );
+    });
 
-  incrementMessages(message.guild.id);
+  await sendServerLog(
+    newMember.guild,
+    {
+      embeds: [embed],
+    },
+  );
+}
 
-  // ── CACHE SNIPE ─────────────────────────────────────────────────────────
-  cacheMessageForSnipe(message);
+// ─── Gestion des interactions boost ────────────────────────
+export async function handleBoostInteraction(
+  interaction: Interaction,
+): Promise<void> {
+  if (
+    interaction.isButton() &&
+    interaction.customId.startsWith(
+      "role_perso_demande:",
+    )
+  ) {
+    const targetId =
+      interaction.customId.split(":")[1];
 
-  // ── ANTI-SPAM ──────────────────────────────────────────────────────────
-  if (await handleAntiSpam(message)) return;
-
-  // ── PHOTO SYSTEM ─────────────────────────────────────────────────────────
-  // Si le salon est configuré en mode photo, photo.ts gère seul
-  // la suppression des messages sans média et la réaction automatique.
-  if (getPhotoEmoji(message.channel.id)) {
-    await handlePhotoSystem(message);
-    return;
-  }
-
-  // ── ANTI LIEN ────────────────────────────────────────────────────────────
-  const isModoAntiLink =
-    message.member?.permissions.has("ManageMessages") ||
-    message.member?.permissions.has("Administrator");
-
-  if (!isModoAntiLink) {
-    const liens = [...message.content.matchAll(INVITE_REGEX)];
-    const hasLienInterdit = liens.some(m => !LIENS_AUTORISES.has(m[1].toLowerCase()));
-
-    if (hasLienInterdit) {
-      const antiPubRoleId = getConfig(message.guild?.id ?? "").antiPubRole ?? DEFAULT_ANTI_PUB_ROLE;
-      await message.delete().catch(() => {});
-      await message.channel.send(
-        `🚫 ${message.author} **PUB INTERDITE SANS L'ACCORD DES** <@&${antiPubRoleId}>\n> Les liens vers d'autres serveurs sont interdits ici.`
-      ).catch(() => {});
-
-      const warnCmd = commands.get("warn");
-      if (warnCmd && message.member) {
-        const fakeArgs = [message.author.id, "Lien Discord non autorisé (pub interdite)"];
-        const fakeMsg  = Object.create(message) as Message;
-        (fakeMsg as any).content = `*warn ${fakeArgs.join(" ")}`;
-        (fakeMsg as any).member  = message.guild?.members.me ?? message.member;
-        await warnCmd.execute(fakeMsg, fakeArgs).catch(() => {});
-      }
+    if (!targetId) {
+      await interaction.reply({
+        content:
+          "❌ Ce bouton est invalide. Demande au staff de republier le panneau.",
+        flags: MessageFlags.Ephemeral,
+      });
       return;
     }
-  }
 
-  // ── IA mention ───────────────────────────────────────────────────────────
-  const ia = await shouldTriggerIA(message, client);
-  if (ia.trigger) {
-    if (message.guildId && isIaBlocked(message.guildId, message.channelId)) return;
-    await message.channel.sendTyping();
-    const reply = await repondreIA(
-      ia.text,
-      message.member?.permissions.has("ManageMessages") ?? false,
-      message.channelId,
-      message.guildId ?? undefined
+    if (
+      interaction.user.id !==
+      targetId
+    ) {
+      await interaction.reply({
+        content:
+          "❌ Ce bouton est réservé à la personne qui a boosté.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
+
+    const modal =
+      new ModalBuilder()
+        .setCustomId(
+          `role_perso_modal:${targetId}`,
+        )
+        .setTitle(
+          "🎨 Rôle personnalisé",
+        );
+
+    const nomInput =
+      new TextInputBuilder()
+        .setCustomId("rp_nom")
+        .setLabel("Nom du rôle")
+        .setStyle(
+          TextInputStyle.Short,
+        )
+        .setPlaceholder(
+          "Ex : ★ MonPseudo",
+        )
+        .setMaxLength(100)
+        .setRequired(true);
+
+    const couleurInput =
+      new TextInputBuilder()
+        .setCustomId(
+          "rp_couleur",
+        )
+        .setLabel(
+          "Couleur (code hex)",
+        )
+        .setStyle(
+          TextInputStyle.Short,
+        )
+        .setPlaceholder(
+          "Ex : #6D28D9",
+        )
+        .setMinLength(7)
+        .setMaxLength(7)
+        .setRequired(true);
+
+    const emojiInput =
+      new TextInputBuilder()
+        .setCustomId("rp_emoji")
+        .setLabel(
+          "Emoji du rôle (facultatif)",
+        )
+        .setStyle(
+          TextInputStyle.Short,
+        )
+        .setPlaceholder("Ex : 🌸")
+        .setMaxLength(20)
+        .setRequired(false);
+
+    modal.addComponents(
+      new ActionRowBuilder<TextInputBuilder>()
+        .addComponents(nomInput),
+
+      new ActionRowBuilder<TextInputBuilder>()
+        .addComponents(
+          couleurInput,
+        ),
+
+      new ActionRowBuilder<TextInputBuilder>()
+        .addComponents(emojiInput),
     );
-    await message.reply({
-      content: reply,
-      allowedMentions: {
-        parse: [],
-        repliedUser: false,
-      },
-    });
+
+    try {
+      await interaction.showModal(
+        modal,
+      );
+    } catch (error) {
+      console.error(
+        "❌ Impossible d’ouvrir le formulaire boost :",
+        error,
+      );
+    }
+
     return;
   }
 
-  // ── COMMANDES NORMALES * ─────────────────────────────────────────────────
-  if (!message.content.startsWith(PREFIX)) return;
+  if (
+    interaction.isModalSubmit() &&
+    interaction.customId.startsWith(
+      "role_perso_modal:",
+    )
+  ) {
+    const targetId =
+      interaction.customId.split(":")[1];
 
-  const args        = message.content.slice(PREFIX.length).trim().split(/\s+/);
-  const commandName = args.shift()?.toLowerCase();
-  if (!commandName) return;
+    if (
+      !targetId ||
+      interaction.user.id !==
+        targetId
+    ) {
+      await interaction.reply({
+        content:
+          "❌ Cette demande ne t’appartient pas.",
+        flags: MessageFlags.Ephemeral,
+      });
+      return;
+    }
 
-  const command = commands.get(commandName);
-  if (!command) return;
+    await interaction.deferReply({
+      flags: MessageFlags.Ephemeral,
+    });
 
-  try {
-    await command.execute(message, args);
-  } catch (err) {
-    console.error(err);
-    message.reply("❌ erreur commande").catch(() => {});
+    const nom =
+      interaction.fields
+        .getTextInputValue(
+          "rp_nom",
+        )
+        .trim();
+
+    const couleur =
+      interaction.fields
+        .getTextInputValue(
+          "rp_couleur",
+        )
+        .trim()
+        .toUpperCase();
+
+    const emoji =
+      interaction.fields
+        .getTextInputValue(
+          "rp_emoji",
+        )
+        .trim();
+
+    if (
+      !/^#[0-9A-F]{6}$/.test(
+        couleur,
+      )
+    ) {
+      await interaction.editReply(
+        "❌ Couleur invalide. Utilise un code hex comme `#6D28D9`.",
+      );
+      return;
+    }
+
+    if (!interaction.guild) {
+      await interaction.editReply(
+        "❌ Cette demande doit être envoyée depuis le serveur.",
+      );
+      return;
+    }
+
+    const demandeChannel =
+      await interaction.guild.channels
+        .fetch(
+          BOOST_REQUEST_CHANNEL_ID,
+        )
+        .catch(() => null);
+
+    if (
+      !demandeChannel ||
+      demandeChannel.type !==
+        ChannelType.GuildText
+    ) {
+      console.error(
+        `❌ Salon demandes boost introuvable : ${BOOST_REQUEST_CHANNEL_ID}`,
+      );
+
+      await interaction.editReply(
+        "❌ Le salon des demandes est introuvable. Préviens un responsable.",
+      );
+      return;
+    }
+
+    const colorInt =
+      Number.parseInt(
+        couleur.slice(1),
+        16,
+      );
+
+    const recap =
+      new EmbedBuilder()
+        .setColor(colorInt)
+        .setTitle(
+          "✦ No Chill • Demande de rôle personnalisé",
+        )
+        .setThumbnail(
+          interaction.user
+            .displayAvatarURL({
+              size: 128,
+            }),
+        )
+        .addFields(
+          {
+            name: "Membre",
+            value:
+              `${interaction.user}\n` +
+              `\`${targetId}\``,
+            inline: true,
+          },
+          {
+            name: "Nom",
+            value: `\`${nom}\``,
+            inline: true,
+          },
+          {
+            name: "Couleur",
+            value:
+              `\`${couleur}\``,
+            inline: true,
+          },
+          {
+            name: "Emoji",
+            value:
+              emoji || "*Aucun*",
+            inline: true,
+          },
+        )
+        .setTimestamp();
+
+    try {
+      await demandeChannel.send({
+        embeds: [recap],
+      });
+    } catch (error) {
+      console.error(
+        "❌ Impossible d’envoyer la demande boost :",
+        error,
+      );
+
+      await interaction.editReply(
+        "❌ Je n’ai pas pu envoyer ta demande. Vérifie les permissions du bot.",
+      );
+      return;
+    }
+
+    await sendServerLog(
+      interaction.guild,
+      {
+        embeds: [recap],
+      },
+    );
+
+    await interaction.editReply(
+      "✅ Ta demande a bien été envoyée ! L’équipe va créer ton rôle dès que possible.",
+    );
+
+    return;
   }
-});
+}
 
-// ─── HTTP SERVER ──────────────────────────────────────────
-const PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+// ─── Commande *boostsetup ──────────────────────────────────
+export const boostSetupCommand: Command = {
+  name: "boostsetup",
+  description:
+    "Affiche la configuration du système de boost",
+  usage: "*boostsetup",
 
-createServer((req, res) => {
-  const status = {
-    status: client.isReady() ? "online" : "starting",
-    bot:    client.user?.tag ?? null,
-    guilds: client.guilds.cache.size,
-    uptime: client.uptime ?? 0,
-  };
-  res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify(status));
-}).listen(PORT, () => {
-  console.log(`🌐 HTTP server listening on ${PORT}`);
-});
+  execute: async (
+    message: Message,
+  ) => {
+    if (
+      !message.guild ||
+      !message.member ||
+      !isModerator(
+        message.member,
+      )
+    ) {
+      await message.reply(
+        "❌ Tu n’as pas la permission d’utiliser cette commande.",
+      );
+      return;
+    }
 
-// ─── LOGIN ───────────────────────────────────────────────
-client.login(token);
+    const annonce =
+      message.guild.channels.cache.get(
+        BOOST_CHANNEL_ID,
+      );
+
+    const demandes =
+      message.guild.channels.cache.get(
+        BOOST_REQUEST_CHANNEL_ID,
+      );
+
+    await message.reply(
+      "✅ **Système de boost No Chill**\n" +
+      `📢 Annonces : ${
+        annonce ??
+        `\`${BOOST_CHANNEL_ID}\``
+      }\n` +
+      `📋 Demandes : ${
+        demandes ??
+        `\`${BOOST_REQUEST_CHANNEL_ID}\``
+      }`,
+    );
+  },
+};
