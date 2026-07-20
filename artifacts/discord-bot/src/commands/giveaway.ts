@@ -986,9 +986,9 @@ export const topGiveawayCommand: Command = {
 export const rerollCommand: Command = {
   name: "reroll",
   description:
-    "Relance le tirage d’un giveaway",
+    "Remplace un ou plusieurs gagnants d’un giveaway",
   usage:
-    "*reroll <ID du message>",
+    "*reroll [ID_message] @gagnant1 [@gagnant2...]",
 
   execute: async (
     message,
@@ -1007,24 +1007,66 @@ export const rerollCommand: Command = {
       return;
     }
 
-    const messageId =
-      args[0];
+    const mentionedUsers = [
+      ...message.mentions.users.values(),
+    ].filter(
+      (user) =>
+        !user.bot,
+    );
 
-    if (!messageId) {
+    if (
+      mentionedUsers.length === 0
+    ) {
       await message.reply(
-        "❌ Indique l’ID du message.",
+        "❌ Mentionne le ou les gagnants à remplacer.\n" +
+        "Exemple : `*reroll ID @gagnant1 @gagnant2`.",
+      );
+      return;
+    }
+
+    let giveawayMessageId:
+      string | null = null;
+
+    const rawId =
+      args.find(
+        (arg) =>
+          /^\d{17,20}$/.test(arg),
+      );
+
+    if (rawId) {
+      giveawayMessageId =
+        rawId;
+    }
+
+    if (
+      !giveawayMessageId &&
+      message.reference?.messageId
+    ) {
+      giveawayMessageId =
+        message.reference.messageId;
+    }
+
+    if (
+      !giveawayMessageId
+    ) {
+      await message.reply(
+        "❌ Donne l’ID du message du giveaway ou réponds directement à son message.",
       );
       return;
     }
 
     const giveawayMessage =
       await message.channel.messages
-        .fetch(messageId)
+        .fetch(
+          giveawayMessageId,
+        )
         .catch(() => null);
 
-    if (!giveawayMessage) {
+    if (
+      !giveawayMessage
+    ) {
       await message.reply(
-        "❌ Message introuvable.",
+        "❌ Message du giveaway introuvable dans ce salon.",
       );
       return;
     }
@@ -1036,7 +1078,7 @@ export const rerollCommand: Command = {
 
     if (!reaction) {
       await message.reply(
-        "❌ Aucune réaction 🎉 trouvée.",
+        "❌ Aucune réaction 🎉 trouvée sur ce giveaway.",
       );
       return;
     }
@@ -1044,7 +1086,7 @@ export const rerollCommand: Command = {
     const users =
       await reaction.users.fetch();
 
-    const candidates = [
+    const participants = [
       ...users.values(),
     ].filter(
       (user) =>
@@ -1052,41 +1094,253 @@ export const rerollCommand: Command = {
     );
 
     if (
-      candidates.length === 0
+      participants.length === 0
     ) {
       await message.reply(
-        "❌ Aucun participant.",
+        "❌ Aucun participant disponible pour le reroll.",
       );
       return;
     }
 
-    const winner =
-      candidates[
+    const embed =
+      giveawayMessage.embeds[0];
+
+    if (!embed) {
+      await message.reply(
+        "❌ Impossible de lire les gagnants actuels de ce giveaway.",
+      );
+      return;
+    }
+
+    const winnerField =
+      embed.fields.find(
+        (field) =>
+          field.name
+            .toLowerCase()
+            .includes("gagnant"),
+      );
+
+    if (!winnerField) {
+      await message.reply(
+        "❌ Aucun gagnant actuel n’a été trouvé dans le message.",
+      );
+      return;
+    }
+
+    const currentWinnerIds = [
+      ...winnerField.value.matchAll(
+        /<@!?(\d{17,20})>/g,
+      ),
+    ].map(
+      (match) =>
+        match[1],
+    );
+
+    if (
+      currentWinnerIds.length === 0
+    ) {
+      await message.reply(
+        "❌ Aucun gagnant actuel n’a été trouvé dans le message.",
+      );
+      return;
+    }
+
+    const replacementIds =
+      mentionedUsers.map(
+        (user) =>
+          user.id,
+      );
+
+    const invalidMentions =
+      replacementIds.filter(
+        (userId) =>
+          !currentWinnerIds.includes(
+            userId,
+          ),
+      );
+
+    if (
+      invalidMentions.length > 0
+    ) {
+      await message.reply(
+        "❌ Ces personnes ne font pas partie des gagnants actuels : " +
+        invalidMentions
+          .map(
+            (id) =>
+              `<@${id}>`,
+          )
+          .join(" "),
+      );
+      return;
+    }
+
+    const keptWinnerIds =
+      currentWinnerIds.filter(
+        (userId) =>
+          !replacementIds.includes(
+            userId,
+          ),
+      );
+
+    const excludedIds =
+      new Set([
+        ...currentWinnerIds,
+        ...replacementIds,
+      ]);
+
+    const eligibleParticipants =
+      participants.filter(
+        (user) =>
+          !excludedIds.has(
+            user.id,
+          ),
+      );
+
+    if (
+      eligibleParticipants.length <
+      replacementIds.length
+    ) {
+      await message.reply(
+        `❌ Pas assez de participants disponibles pour remplacer ${replacementIds.length} gagnant(s).`,
+      );
+      return;
+    }
+
+    const shuffled = [
+      ...eligibleParticipants,
+    ];
+
+    for (
+      let index =
+        shuffled.length - 1;
+      index > 0;
+      index -= 1
+    ) {
+      const randomIndex =
         Math.floor(
           Math.random() *
-          candidates.length,
-        )
-      ];
+          (index + 1),
+        );
 
-    await message.channel.send(
-      `🎊 Nouveau gagnant : <@${winner.id}> !`,
-    );
+      [
+        shuffled[index],
+        shuffled[randomIndex],
+      ] = [
+        shuffled[randomIndex],
+        shuffled[index],
+      ];
+    }
+
+    const newWinners =
+      shuffled.slice(
+        0,
+        replacementIds.length,
+      );
+
+    const finalWinnerIds = [
+      ...keptWinnerIds,
+      ...newWinners.map(
+        (user) =>
+          user.id,
+      ),
+    ];
+
+    const updatedFields =
+      embed.fields.map(
+        (field) => {
+          if (
+            field.name !==
+            winnerField.name
+          ) {
+            return {
+              name: field.name,
+              value: field.value,
+              inline:
+                field.inline,
+            };
+          }
+
+          return {
+            name:
+              finalWinnerIds.length > 1
+                ? "🏆 Gagnants"
+                : "🏆 Gagnant",
+
+            value:
+              finalWinnerIds
+                .map(
+                  (userId, index) =>
+                    `**${index + 1}.** <@${userId}>`,
+                )
+                .join("\n"),
+
+            inline:
+              field.inline,
+          };
+        },
+      );
+
+    const updatedEmbed =
+      EmbedBuilder.from(embed)
+        .setFields(
+          updatedFields,
+        )
+        .setTimestamp();
+
+    await giveawayMessage.edit({
+      embeds: [
+        updatedEmbed,
+      ],
+    });
+
+    const replacedText =
+      replacementIds
+        .map(
+          (id) =>
+            `<@${id}>`,
+        )
+        .join(" ");
+
+    const replacementsText =
+      newWinners
+        .map(
+          (user) =>
+            `<@${user.id}>`,
+        )
+        .join(" ");
+
+    await message.channel.send({
+      content:
+        `🔄 **Reroll effectué**\n` +
+        `Remplacé(s) : ${replacedText}\n` +
+        `Nouveau(x) gagnant(s) : ${replacementsText}`,
+      allowedMentions: {
+        users:
+          newWinners.map(
+            (user) =>
+              user.id,
+          ),
+      },
+    });
 
     const logEmbed =
       new EmbedBuilder()
-        .setColor(0x2ecc71)
+        .setColor(0x6d28d9)
         .setTitle(
           "🔄 Giveaway reroll",
         )
         .addFields(
           {
             name:
-              "Nouveau gagnant",
-
+              "Gagnants remplacés",
             value:
-              `<@${winner.id}>`,
-
-            inline: true,
+              replacedText,
+          },
+          {
+            name:
+              "Nouveaux gagnants",
+            value:
+              replacementsText,
           },
           {
             name: "Par",
@@ -1095,9 +1349,11 @@ export const rerollCommand: Command = {
             inline: true,
           },
           {
-            name: "Message",
+            name:
+              "Giveaway",
             value:
               `[Ouvrir](${giveawayMessage.url})`,
+            inline: true,
           },
         )
         .setTimestamp();
@@ -1105,7 +1361,9 @@ export const rerollCommand: Command = {
     await sendServerLog(
       message.guild,
       {
-        embeds: [logEmbed],
+        embeds: [
+          logEmbed,
+        ],
       },
     );
   },
