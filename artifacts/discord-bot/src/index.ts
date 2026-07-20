@@ -92,7 +92,11 @@ import {
   handleBulkDeletedMessages,
   handleSnipeInteraction,
 } from "./commands/chichi.js";
-import { ppCommand, handleChichiMediaMessage } from "./commands/media.js";
+import {
+  ppCommand,
+  handleChichiMediaMessage,
+  handleMediaInteraction,
+} from "./commands/media.js";
 
 // ─── TOKEN ────────────────────────────────────────────────
 const token = process.env.DISCORD_BOT_TOKEN;
@@ -372,6 +376,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
     await handleBoostInteraction(interaction);
     await handleVerificationInteraction(interaction);
     await handleSnipeInteraction(interaction);
+    await handleMediaInteraction(interaction);
   } catch (err) {
     console.error("Erreur interaction:", err);
   }
