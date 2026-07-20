@@ -1,6 +1,11 @@
 import {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   EmbedBuilder,
+  MessageFlags,
   type GuildMember,
+  type Interaction,
   type Message,
   type User,
 } from "discord.js";
@@ -20,6 +25,24 @@ import { isModerator } from "../utils/modCheck.js";
 type MediaConfig = {
   blockedGuilds: string[];
 };
+
+type MediaPage = {
+  title: string;
+  imageUrl: string;
+};
+
+type MediaSession = {
+  userId: string;
+  pages: MediaPage[];
+  index: number;
+  expiresAt: number;
+};
+
+const MEDIA_PANEL_DURATION =
+  5 * 60 * 1000;
+
+const mediaSessions =
+  new Map<string, MediaSession>();
 
 const MEDIA_FILE = (() => {
   try {
@@ -44,7 +67,9 @@ let mediaConfig: MediaConfig = {
 
 function loadMediaConfig(): void {
   try {
-    if (!existsSync(MEDIA_FILE)) return;
+    if (!existsSync(MEDIA_FILE)) {
+      return;
+    }
 
     const parsed = JSON.parse(
       readFileSync(
@@ -119,7 +144,9 @@ async function resolveTarget(
   member: GuildMember;
   user: User;
 } | null> {
-  if (!message.guild) return null;
+  if (!message.guild) {
+    return null;
+  }
 
   const mentioned =
     message.mentions.members?.first();
@@ -137,33 +164,162 @@ async function resolveTarget(
   const referenceId =
     message.reference?.messageId;
 
-  if (referenceId) {
-    const referencedMessage =
-      await message.channel.messages
-        .fetch(referenceId)
-        .catch(() => null);
-
-    if (referencedMessage) {
-      const member =
-        await message.guild.members
-          .fetch(
-            referencedMessage.author.id,
-          )
-          .catch(() => null);
-
-      if (member) {
-        return {
-          member,
-          user: await fetchFullUser(
-            message,
-            member,
-          ),
-        };
-      }
-    }
+  if (!referenceId) {
+    return null;
   }
 
-  return null;
+  const referencedMessage =
+    await message.channel.messages
+      .fetch(referenceId)
+      .catch(() => null);
+
+  if (!referencedMessage) {
+    return null;
+  }
+
+  const member =
+    await message.guild.members
+      .fetch(
+        referencedMessage.author.id,
+      )
+      .catch(() => null);
+
+  if (!member) {
+    return null;
+  }
+
+  return {
+    member,
+    user: await fetchFullUser(
+      message,
+      member,
+    ),
+  };
+}
+
+function buildMediaEmbed(
+  page: MediaPage,
+  index: number,
+  total: number,
+): EmbedBuilder {
+  return new EmbedBuilder()
+    .setColor(0x6d28d9)
+    .setTitle(page.title)
+    .setImage(page.imageUrl)
+    .setFooter({
+      text:
+        `${index + 1}/${total}`,
+    });
+}
+
+function buildMediaRow(
+  sessionId: string,
+  index: number,
+  total: number,
+): ActionRowBuilder<ButtonBuilder> {
+  return new ActionRowBuilder<ButtonBuilder>()
+    .addComponents(
+      new ButtonBuilder()
+        .setCustomId(
+          `media_prev_${sessionId}`,
+        )
+        .setEmoji("⬅️")
+        .setStyle(
+          ButtonStyle.Secondary,
+        )
+        .setDisabled(
+          index <= 0,
+        ),
+
+      new ButtonBuilder()
+        .setCustomId(
+          `media_page_${sessionId}`,
+        )
+        .setLabel(
+          `${index + 1}/${total}`,
+        )
+        .setStyle(
+          ButtonStyle.Secondary,
+        )
+        .setDisabled(true),
+
+      new ButtonBuilder()
+        .setCustomId(
+          `media_next_${sessionId}`,
+        )
+        .setEmoji("➡️")
+        .setStyle(
+          ButtonStyle.Secondary,
+        )
+        .setDisabled(
+          index >= total - 1,
+        ),
+    );
+}
+
+async function sendMediaPanel(
+  message: Message,
+  pages: MediaPage[],
+): Promise<void> {
+  if (pages.length === 0) {
+    return;
+  }
+
+  const sessionId =
+    `${message.id}_${Date.now()}`;
+
+  mediaSessions.set(
+    sessionId,
+    {
+      userId:
+        message.author.id,
+
+      pages,
+
+      index: 0,
+
+      expiresAt:
+        Date.now() +
+        MEDIA_PANEL_DURATION,
+    },
+  );
+
+  const panel =
+    await message.reply({
+      embeds: [
+        buildMediaEmbed(
+          pages[0],
+          0,
+          pages.length,
+        ),
+      ],
+
+      components:
+        pages.length > 1
+          ? [
+              buildMediaRow(
+                sessionId,
+                0,
+                pages.length,
+              ),
+            ]
+          : [],
+
+      allowedMentions: {
+        parse: [],
+        repliedUser: false,
+      },
+    });
+
+  setTimeout(async () => {
+    mediaSessions.delete(
+      sessionId,
+    );
+
+    await panel.edit({
+      components: [],
+    }).catch(() => {});
+  }, MEDIA_PANEL_DURATION);
 }
 
 async function sendProfilePictures(
@@ -183,29 +339,23 @@ async function sendProfilePictures(
       extension: "png",
     });
 
-  const embeds = [
-    new EmbedBuilder()
-      .setColor(0x6d28d9)
-      .setTitle(
-        `✦ Photo de profil serveur • ${user.username}`,
-      )
-      .setImage(serverAvatar),
-
-    new EmbedBuilder()
-      .setColor(0x6d28d9)
-      .setTitle(
-        `✦ Photo de profil générale • ${user.username}`,
-      )
-      .setImage(globalAvatar),
-  ];
-
-  await message.reply({
-    embeds,
-    allowedMentions: {
-      parse: [],
-      repliedUser: false,
-    },
-  });
+  await sendMediaPanel(
+    message,
+    [
+      {
+        title:
+          `✦ Photo de profil serveur • ${user.username}`,
+        imageUrl:
+          serverAvatar,
+      },
+      {
+        title:
+          `✦ Photo de profil générale • ${user.username}`,
+        imageUrl:
+          globalAvatar,
+      },
+    ],
+  );
 }
 
 async function sendBanners(
@@ -213,7 +363,7 @@ async function sendBanners(
   member: GuildMember,
   user: User,
 ): Promise<void> {
-  const embeds: EmbedBuilder[] = [];
+  const pages: MediaPage[] = [];
 
   const serverBanner =
     member.bannerURL({
@@ -228,57 +378,46 @@ async function sendBanners(
     });
 
   if (serverBanner) {
-    embeds.push(
-      new EmbedBuilder()
-        .setColor(0x6d28d9)
-        .setTitle(
-          `✦ Bannière serveur • ${user.username}`,
-        )
-        .setImage(serverBanner),
-    );
+    pages.push({
+      title:
+        `✦ Bannière serveur • ${user.username}`,
+      imageUrl:
+        serverBanner,
+    });
   }
 
   if (globalBanner) {
-    embeds.push(
-      new EmbedBuilder()
-        .setColor(0x6d28d9)
-        .setTitle(
-          `✦ Bannière générale • ${user.username}`,
-        )
-        .setImage(globalBanner),
-    );
+    pages.push({
+      title:
+        `✦ Bannière générale • ${user.username}`,
+      imageUrl:
+        globalBanner,
+    });
   }
 
-  if (embeds.length === 0) {
+  if (pages.length === 0) {
     await message.reply(
       `❌ ${user.username} ne possède aucune bannière.`,
     );
     return;
   }
 
-  await message.reply({
-    embeds,
-    allowedMentions: {
-      parse: [],
-      repliedUser: false,
-    },
-  });
+  await sendMediaPanel(
+    message,
+    pages,
+  );
 }
 
-/**
- * Détecte automatiquement :
- * - chichi pp @membre
- * - chichi banner @membre
- * - chichi pp en réponse à un message
- * - chichi banner en réponse à un message
- *
- * Le préfixe * est accepté mais n’est pas obligatoire.
- */
 export async function handleChichiMediaMessage(
   message: Message,
 ): Promise<boolean> {
-  if (!message.guild) return false;
-  if (message.author.bot) return false;
+  if (!message.guild) {
+    return false;
+  }
+
+  if (message.author.bot) {
+    return false;
+  }
 
   const normalized =
     message.content
@@ -291,7 +430,9 @@ export async function handleChichiMediaMessage(
       /^chichi\s+(pp|banner|banniere)\b/,
     );
 
-  if (!match) return false;
+  if (!match) {
+    return false;
+  }
 
   if (
     isMediaBlocked(
@@ -316,10 +457,7 @@ export async function handleChichiMediaMessage(
     return true;
   }
 
-  const action =
-    match[1];
-
-  if (action === "pp") {
+  if (match[1] === "pp") {
     await sendProfilePictures(
       message,
       target.member,
@@ -336,6 +474,124 @@ export async function handleChichiMediaMessage(
   );
 
   return true;
+}
+
+export async function handleMediaInteraction(
+  interaction: Interaction,
+): Promise<void> {
+  if (!interaction.isButton()) {
+    return;
+  }
+
+  if (
+    !interaction.customId
+      .startsWith("media_")
+  ) {
+    return;
+  }
+
+  const parts =
+    interaction.customId.split("_");
+
+  const action =
+    parts[1];
+
+  const sessionId =
+    parts.slice(2).join("_");
+
+  if (action === "page") {
+    await interaction
+      .deferUpdate()
+      .catch(() => {});
+
+    return;
+  }
+
+  const session =
+    mediaSessions.get(
+      sessionId,
+    );
+
+  if (
+    !session ||
+    session.expiresAt <
+      Date.now()
+  ) {
+    mediaSessions.delete(
+      sessionId,
+    );
+
+    await interaction.reply({
+      content:
+        "❌ Ce panneau a expiré. Relance la commande.",
+
+      flags:
+        MessageFlags.Ephemeral,
+    });
+
+    return;
+  }
+
+  if (
+    interaction.user.id !==
+    session.userId
+  ) {
+    await interaction.reply({
+      content:
+        "❌ Seule la personne qui a lancé la commande peut utiliser ces boutons.",
+
+      flags:
+        MessageFlags.Ephemeral,
+    });
+
+    return;
+  }
+
+  if (action === "prev") {
+    session.index =
+      Math.max(
+        0,
+        session.index - 1,
+      );
+  }
+
+  if (action === "next") {
+    session.index =
+      Math.min(
+        session.pages.length - 1,
+        session.index + 1,
+      );
+  }
+
+  mediaSessions.set(
+    sessionId,
+    session,
+  );
+
+  await interaction.update({
+    embeds: [
+      buildMediaEmbed(
+        session.pages[
+          session.index
+        ],
+        session.index,
+        session.pages.length,
+      ),
+    ],
+
+    components: [
+      buildMediaRow(
+        sessionId,
+        session.index,
+        session.pages.length,
+      ),
+    ],
+
+    allowedMentions: {
+      parse: [],
+      repliedUser: false,
+    },
+  });
 }
 
 export const ppCommand: Command = {
@@ -390,6 +646,7 @@ export const ppCommand: Command = {
       await message.reply(
         "✅ `chichi pp` et `chichi banner` sont désactivés.",
       );
+
       return;
     }
 
@@ -419,6 +676,7 @@ export const ppCommand: Command = {
       await message.reply(
         "✅ `chichi pp` et `chichi banner` sont réactivés.",
       );
+
       return;
     }
 
