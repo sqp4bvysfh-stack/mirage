@@ -1,10 +1,16 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import {
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import type { Message } from "discord.js";
 import { isModerator } from "./modCheck.js";
 
 interface AntiSpamSettings {
   enabled: boolean;
+  ignoredChannelIds: string[];
 }
 
 const SETTINGS_FILE = (() => {
@@ -22,6 +28,7 @@ const TIMEOUT_MS = 60_000;
 
 let settings: AntiSpamSettings = {
   enabled: true,
+  ignoredChannelIds: [],
 };
 
 const messageTracker = new Map<string, number[]>();
@@ -36,6 +43,14 @@ function load(): void {
     if (typeof parsed.enabled === "boolean") {
       settings.enabled = parsed.enabled;
     }
+
+    if (Array.isArray(parsed.ignoredChannelIds)) {
+      settings.ignoredChannelIds = parsed.ignoredChannelIds.filter(
+        (channelId) =>
+          typeof channelId === "string" &&
+          /^\d{17,20}$/.test(channelId),
+      );
+    }
   } catch (error) {
     console.error("❌ Impossible de charger la configuration anti-spam :", error);
   }
@@ -43,7 +58,11 @@ function load(): void {
 
 function save(): void {
   try {
-    writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), "utf-8");
+    writeFileSync(
+      SETTINGS_FILE,
+      JSON.stringify(settings, null, 2),
+      "utf-8",
+    );
   } catch (error) {
     console.error("❌ Impossible de sauvegarder la configuration anti-spam :", error);
   }
@@ -61,17 +80,45 @@ export function setAntiSpamEnabled(enabled: boolean): void {
   save();
 }
 
-/**
- * Retourne true lorsque le message a été traité comme du spam.
- */
+export function getIgnoredAntiSpamChannels(): string[] {
+  return [...settings.ignoredChannelIds];
+}
+
+export function isAntiSpamChannelIgnored(channelId: string): boolean {
+  return settings.ignoredChannelIds.includes(channelId);
+}
+
+export function addIgnoredAntiSpamChannel(channelId: string): boolean {
+  if (isAntiSpamChannelIgnored(channelId)) return false;
+
+  settings.ignoredChannelIds.push(channelId);
+  messageTracker.clear();
+  save();
+  return true;
+}
+
+export function removeIgnoredAntiSpamChannel(channelId: string): boolean {
+  if (!isAntiSpamChannelIgnored(channelId)) return false;
+
+  settings.ignoredChannelIds = settings.ignoredChannelIds.filter(
+    (id) => id !== channelId,
+  );
+
+  messageTracker.clear();
+  save();
+  return true;
+}
+
 export async function handleAntiSpam(message: Message): Promise<boolean> {
   if (!settings.enabled) return false;
   if (!message.guild || !message.member) return false;
   if (message.author.bot) return false;
   if (isModerator(message.member)) return false;
+  if (isAntiSpamChannelIgnored(message.channelId)) return false;
 
   const now = Date.now();
-  const key = `${message.guild.id}:${message.author.id}`;
+  const key = `${message.guild.id}:${message.channelId}:${message.author.id}`;
+
   const recent = (messageTracker.get(key) ?? []).filter(
     (timestamp) => now - timestamp < SPAM_WINDOW_MS,
   );
