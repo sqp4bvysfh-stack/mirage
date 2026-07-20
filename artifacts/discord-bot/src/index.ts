@@ -98,6 +98,9 @@ if (!token) {
 
 export const PREFIX = "*";
 const MAIN_GUILD_ID = "1362520000426152036";
+const MEMBER_ROLE_ID = "1362527149378240814";
+const PERM_IMG_ROLE_ID = "1528251444086444082";
+const PERM_VOC_ROLE_ID = "1528251644113059922";
 
 // ─── COLLECTIONS ─────────────────────────────────────────
 const commands = new Collection<string, Command>();
@@ -303,9 +306,43 @@ client.on(Events.GuildMemberUpdate, async (oldMember, newMember) => {
   if (newMember.guild.id !== MAIN_GUILD_ID) return;
 
   try {
-    await handleBoostMember(oldMember as import("discord.js").GuildMember, newMember);
+    await handleBoostMember(
+      oldMember as import("discord.js").GuildMember,
+      newMember,
+    );
   } catch (err) {
     console.error("Erreur boost:", err);
+  }
+
+  // Protection des membres déjà vérifiés :
+  // l'ajout d'une permission ne doit jamais retirer le rôle Membres.
+  const hadMemberRole =
+    oldMember.roles.cache.has(MEMBER_ROLE_ID);
+
+  const lostMemberRole =
+    hadMemberRole &&
+    !newMember.roles.cache.has(MEMBER_ROLE_ID);
+
+  const hasSpecialPermission =
+    newMember.roles.cache.has(PERM_IMG_ROLE_ID) ||
+    newMember.roles.cache.has(PERM_VOC_ROLE_ID);
+
+  if (lostMemberRole && hasSpecialPermission) {
+    console.warn(
+      `⚠️ Le rôle Membres a été retiré à ${newMember.user.tag} après l'ajout d'une permission. Restauration automatique.`,
+    );
+
+    await newMember.roles
+      .add(
+        MEMBER_ROLE_ID,
+        "Protection : conservation du rôle Membres avec les permissions spéciales",
+      )
+      .catch((error) => {
+        console.error(
+          `❌ Impossible de restaurer Membres à ${newMember.user.tag}:`,
+          error,
+        );
+      });
   }
 });
 
