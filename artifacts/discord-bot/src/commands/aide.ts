@@ -10,6 +10,7 @@ import {
 
 import type { Command } from "../types.js";
 import { isModerator } from "../utils/modCheck.js";
+import { BOT_OWNER_ID } from "./owner.js";
 
 type HelpCategory =
   | "home"
@@ -18,7 +19,8 @@ type HelpCategory =
   | "tickets"
   | "config"
   | "ia"
-  | "custom";
+  | "custom"
+  | "owner";
 
 type HelpCommandInfo = {
   name: string;
@@ -269,6 +271,70 @@ const COMMANDS: HelpCommandInfo[] = [
     permission: "Modérateur",
     category: "config",
   },
+
+  {
+    name: "massban",
+    description: "Bannit tous les membres possédant un rôle.",
+    usage: "*massban @role [raison]",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "masskick",
+    description: "Expulse tous les membres possédant un rôle.",
+    usage: "*masskick @role [raison]",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "delsalon",
+    description: "Supprime les salons mentionnés ou le salon actuel.",
+    usage: "*delsalon #salon1 #salon2",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "broadcast",
+    description: "Envoie un message dans tous les salons du serveur.",
+    usage: "*broadcast message",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "parle",
+    description: "Envoie un message dans tous les salons ou dans un salon précis.",
+    usage: "*parle message | *parle CHANNEL_ID message",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "botprofil pseudo",
+    description: "Change le pseudo du bot sur ce serveur.",
+    usage: "*botprofil pseudo <nom>",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "botprofil avatar",
+    description: "Change l’avatar du bot.",
+    usage: "*botprofil avatar <url>",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "botprofil banniere",
+    description: "Change la bannière du bot.",
+    usage: "*botprofil banniere <url>",
+    permission: "Owner",
+    category: "owner",
+  },
+  {
+    name: "botprofil reset",
+    description: "Restaure le profil par défaut du bot.",
+    usage: "*botprofil reset",
+    permission: "Owner",
+    category: "owner",
+  },
 ];
 
 function isStaffOnly(command: HelpCommandInfo): boolean {
@@ -323,6 +389,12 @@ function buildMenu(userId: string): ActionRowBuilder<StringSelectMenuBuilder> {
           value: "custom",
           emoji: "🎨",
         },
+        {
+          label: "Owner",
+          description: "Commandes privées du propriétaire",
+          value: "owner",
+          emoji: "👑",
+        },
       ),
   );
 }
@@ -372,15 +444,25 @@ const CATEGORY_TITLES: Record<HelpCategory, string> = {
   config: "⚙️ Configuration",
   ia: "🤖 Intelligence artificielle",
   custom: "🎨 Personnalisation",
+  owner: "👑 Commandes Owner",
 };
 
 function buildCategoryEmbed(
   category: HelpCategory,
   canSeeStaff: boolean,
+  isBotOwner: boolean,
 ): EmbedBuilder {
   const visible = COMMANDS.filter((command) => {
     if (command.category !== category) return false;
-    if (!canSeeStaff && isStaffOnly(command)) return false;
+
+    if (command.permission === "Owner") {
+      return isBotOwner;
+    }
+
+    if (command.permission === "Modérateur") {
+      return canSeeStaff || isBotOwner;
+    }
+
     return true;
   });
 
@@ -491,6 +573,9 @@ export const aideCommand: Command = {
       message.member && isModerator(message.member),
     );
 
+    const isBotOwner =
+      message.author.id === BOT_OWNER_ID;
+
     if (query) {
       const command = findCommand(query);
 
@@ -501,7 +586,21 @@ export const aideCommand: Command = {
         return;
       }
 
-      if (!canSeeStaff && isStaffOnly(command)) {
+      if (
+        command.permission === "Owner" &&
+        !isBotOwner
+      ) {
+        await message.reply(
+          "❌ Cette commande est réservée au propriétaire du bot.",
+        );
+        return;
+      }
+
+      if (
+        command.permission === "Modérateur" &&
+        !canSeeStaff &&
+        !isBotOwner
+      ) {
         await message.reply(
           "❌ Cette commande est réservée au staff.",
         );
@@ -575,6 +674,9 @@ export async function handleAideInteraction(
     member && isModerator(member),
   );
 
+  const isBotOwner =
+    interaction.user.id === BOT_OWNER_ID;
+
   if (isHome) {
     await interaction.update({
       embeds: [
@@ -591,6 +693,18 @@ export async function handleAideInteraction(
 
   const category =
     interaction.values[0] as HelpCategory;
+
+  if (
+    category === "owner" &&
+    !isBotOwner
+  ) {
+    await interaction.reply({
+      content:
+        "❌ Cet onglet est réservé au propriétaire du bot.",
+      flags: MessageFlags.Ephemeral,
+    });
+    return;
+  }
 
   if (category === "home") {
     await interaction.update({
@@ -611,6 +725,7 @@ export async function handleAideInteraction(
       buildCategoryEmbed(
         category,
         canSeeStaff,
+        isBotOwner,
       ),
     ],
     components: [
