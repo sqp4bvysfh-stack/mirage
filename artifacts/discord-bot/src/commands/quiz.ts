@@ -179,65 +179,234 @@ const CAPITALES = [
   { question: "Quelle est la capitale de la Libye ?", reponse: "tripoli" },
 ];
 
+
 const activeQuiz = new Set<string>();
+
+const QUESTIONS_PER_GAME = 10;
+const QUESTION_TIME = 30_000;
+
+function normalizeAnswer(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[’']/g, "")
+    .replace(/[-_]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function levenshteinDistance(a: string, b: string): number {
+  const matrix = Array.from(
+    { length: a.length + 1 },
+    () => Array<number>(b.length + 1).fill(0),
+  );
+
+  for (let i = 0; i <= a.length; i += 1) matrix[i][0] = i;
+  for (let j = 0; j <= b.length; j += 1) matrix[0][j] = j;
+
+  for (let i = 1; i <= a.length; i += 1) {
+    for (let j = 1; j <= b.length; j += 1) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      matrix[i][j] = Math.min(
+        matrix[i - 1][j] + 1,
+        matrix[i][j - 1] + 1,
+        matrix[i - 1][j - 1] + cost,
+      );
+    }
+  }
+
+  return matrix[a.length][b.length];
+}
+
+function isCorrectAnswer(userAnswer: string, expectedAnswer: string): boolean {
+  const user = normalizeAnswer(userAnswer);
+  const expected = normalizeAnswer(expectedAnswer);
+
+  if (user === expected) return true;
+
+  return (
+    Math.abs(user.length - expected.length) <= 1 &&
+    levenshteinDistance(user, expected) <= 1
+  );
+}
+
+function shuffle<T>(items: T[]): T[] {
+  const copy = [...items];
+
+  for (let i = copy.length - 1; i > 0; i -= 1) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+
+  return copy;
+}
+
+function buildProgress(current: number, total: number): string {
+  return "█".repeat(current) + "□".repeat(total - current);
+}
+
+function buildScoreText(scores: Map<string, number>): string {
+  const sorted = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+
+  if (sorted.length === 0) {
+    return "Aucun point pour le moment.";
+  }
+
+  return sorted
+    .slice(0, 10)
+    .map(
+      ([userId, score], index) =>
+        `**${index + 1}.** <@${userId}> — **${score} pt${score > 1 ? "s" : ""}**`,
+    )
+    .join("\n");
+}
 
 export const quizCommand: Command = {
   name: "quiz",
-  description: "Lance un quiz",
+  description: "Lance un quiz de 10 questions aléatoires",
   usage: "*quiz drapeaux | *quiz cultureg | *quiz capital",
+
   execute: async (message, args) => {
     const channelId = message.channelId;
+
     if (activeQuiz.has(channelId)) {
       await message.reply("❌ Un quiz est déjà en cours dans ce salon !");
       return;
     }
 
     const mode = args[0]?.toLowerCase();
-    if (mode !== "drapeaux" && mode !== "cultureg" && mode !== "capital") {
-      await message.reply("❌ Utilise `*quiz drapeaux`, `*quiz cultureg` ou `*quiz capital`");
+
+    if (
+      mode !== "drapeaux" &&
+      mode !== "cultureg" &&
+      mode !== "capital"
+    ) {
+      await message.reply(
+        "❌ Utilise `*quiz drapeaux`, `*quiz cultureg` ou `*quiz capital`.",
+      );
       return;
     }
 
-    const questions =
-      mode === "drapeaux" ? DRAPEAUX :
-      mode === "capital" ? CAPITALES :
-      CULTURE_G;
+    const allQuestions =
+      mode === "drapeaux"
+        ? DRAPEAUX
+        : mode === "capital"
+          ? CAPITALES
+          : CULTURE_G;
 
-    const titres: Record<string, string> = {
+    const selectedQuestions = shuffle(allQuestions).slice(
+      0,
+      Math.min(QUESTIONS_PER_GAME, allQuestions.length),
+    );
+
+    const titles: Record<string, string> = {
       drapeaux: "🌍 Quiz Drapeaux",
       cultureg: "🧠 Quiz Culture Générale",
       capital: "🏙️ Quiz Capitales",
     };
 
-    const q = questions[Math.floor(Math.random() * questions.length)];
+    const scores = new Map<string, number>();
     activeQuiz.add(channelId);
 
-    const embed = new EmbedBuilder()
-      .setColor(0x3498db)
-      .setTitle(titres[mode])
-      .setDescription(`**${q.question}**\n\nVous avez **30 secondes** pour répondre !`)
-      .setFooter({ text: "Tapez votre réponse dans le chat" })
-      .setTimestamp();
+    try {
+      for (let index = 0; index < selectedQuestions.length; index += 1) {
+        const question = selectedQuestions[index];
+        const questionNumber = index + 1;
 
-    await message.channel.send({ embeds: [embed] });
+        const embed = new EmbedBuilder()
+          .setColor(0x6d28d9)
+          .setTitle(titles[mode])
+          .setDescription(
+            `**Question ${questionNumber}/${selectedQuestions.length}**\n` +
+            `${buildProgress(questionNumber, selectedQuestions.length)}\n\n` +
+            `**${question.question}**\n\n` +
+            "Vous avez **30 secondes** pour répondre !",
+          )
+          .addFields({
+            name: "🏆 Score en direct",
+            value: buildScoreText(scores),
+          })
+          .setFooter({
+            text: "Les accents et majuscules ne sont pas obligatoires.",
+          })
+          .setTimestamp();
 
-    const collector = message.channel.createMessageCollector({
-      filter: (m) => !m.author.bot,
-      time: 30000,
-    });
+        await message.channel.send({ embeds: [embed] });
 
-    collector.on("collect", async (m) => {
-      if (m.content.toLowerCase().trim() === q.reponse) {
-        collector.stop("correct");
-        await message.channel.send(`✅ Bravo ${m.author} ! La bonne réponse était **${q.reponse}** 🎉`);
+        const winner = await new Promise<import("discord.js").Message | null>(
+          (resolve) => {
+            const collector = message.channel.createMessageCollector({
+              filter: (candidate) => !candidate.author.bot,
+              time: QUESTION_TIME,
+            });
+
+            let resolved = false;
+
+            collector.on("collect", (candidate) => {
+              if (isCorrectAnswer(candidate.content, question.reponse)) {
+                resolved = true;
+                collector.stop("correct");
+                resolve(candidate);
+              }
+            });
+
+            collector.on("end", (_collected, reason) => {
+              if (!resolved && reason !== "correct") {
+                resolve(null);
+              }
+            });
+          },
+        );
+
+        if (winner) {
+          scores.set(
+            winner.author.id,
+            (scores.get(winner.author.id) ?? 0) + 1,
+          );
+
+          await message.channel.send(
+            `✅ Bravo ${winner.author} ! La bonne réponse était **${question.reponse}**.`,
+          );
+        } else {
+          await message.channel.send(
+            `⏰ Temps écoulé ! La réponse était **${question.reponse}**.`,
+          );
+        }
       }
-    });
 
-    collector.on("end", async (_, reason) => {
+      const ranking = [...scores.entries()].sort((a, b) => b[1] - a[1]);
+
+      const finalEmbed = new EmbedBuilder()
+        .setColor(0x6d28d9)
+        .setTitle(`✦ ${titles[mode]} • Résultats`)
+        .setDescription(
+          ranking.length > 0
+            ? ranking
+                .map(
+                  ([userId, score], index) =>
+                    `**${index + 1}.** <@${userId}> — **${score}/10**`,
+                )
+                .join("\n")
+            : "Personne n’a marqué de point.",
+        )
+        .setFooter({
+          text: "Pour rejouer, relance simplement la commande *quiz.",
+        })
+        .setTimestamp();
+
+      if (ranking.length > 0) {
+        finalEmbed.addFields({
+          name: "🏆 Vainqueur",
+          value:
+            `<@${ranking[0][0]}> avec **${ranking[0][1]} point` +
+            `${ranking[0][1] > 1 ? "s" : ""}**.`,
+        });
+      }
+
+      await message.channel.send({ embeds: [finalEmbed] });
+    } finally {
       activeQuiz.delete(channelId);
-      if (reason !== "correct") {
-        await message.channel.send(`⏰ Temps écoulé ! La réponse était **${q.reponse}**`);
-      }
-    });
+    }
   },
 };
