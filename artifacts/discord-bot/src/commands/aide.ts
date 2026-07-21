@@ -18,6 +18,7 @@ type HelpCategory =
   | "moderation"
   | "tickets"
   | "tools"
+  | "games"
   | "ia"
   | "custom"
   | "owner";
@@ -246,6 +247,37 @@ const COMMANDS: HelpCommandInfo[] = [
   },
 
 
+
+  {
+    name: "quiz",
+    description: "Lance un quiz de 10 questions aléatoires avec classement.",
+    usage: "*quiz drapeaux | *quiz capital | *quiz cultureg",
+    permission: "Membre",
+    example: "*quiz drapeaux",
+    category: "games",
+  },
+  {
+    name: "undercover",
+    description: "Lance une partie d’Undercover.",
+    usage: "*undercover",
+    permission: "Membre",
+    category: "games",
+  },
+  {
+    name: "loupgarou",
+    description: "Lance une partie de Loup-Garou.",
+    usage: "*loupgarou",
+    permission: "Membre",
+    category: "games",
+  },
+  {
+    name: "finpartie",
+    description: "Met fin à la partie de Loup-Garou en cours.",
+    usage: "*finpartie",
+    permission: "Modérateur",
+    category: "games",
+  },
+
   {
     name: "giveaway",
     description: "Lance un giveaway avec les conditions de ton choix.",
@@ -406,6 +438,12 @@ function buildMenu(userId: string): ActionRowBuilder<StringSelectMenuBuilder> {
           emoji: "🛡️",
         },
         {
+          label: "Jeux",
+          description: "Quiz, Undercover et Loup-Garou",
+          value: "games",
+          emoji: "🎮",
+        },
+        {
           label: "Outils",
           description: "Giveaways, sondages et messages",
           value: "tools",
@@ -464,6 +502,11 @@ function buildHomeEmbed(botAvatar?: string): EmbedBuilder {
         value: `${COMMANDS.filter((c) => c.category === "tools").length} commandes`,
         inline: true,
       },
+      {
+        name: "🎮 Jeux",
+        value: `${COMMANDS.filter((c) => c.category === "games").length} commandes`,
+        inline: true,
+      },
     )
     .setFooter({
       text: `${HELP_FOOTER} • ${COMMANDS.length} commandes répertoriées`,
@@ -482,6 +525,7 @@ const CATEGORY_TITLES: Record<HelpCategory, string> = {
   moderation: "🛡️ Modération",
   tickets: "🎫 Tickets",
   tools: "🛠️ Outils",
+  games: "🎮 Jeux",
   ia: "🤖 Intelligence artificielle",
   custom: "🎨 Personnalisation",
   owner: "👑 Commandes Owner",
