@@ -546,8 +546,37 @@ createServer((req, res) => {
 });
 
 // ─── LOGIN ───────────────────────────────────────────────
-client.on("shardError", (error) => {
-  console.error("❌ Erreur Gateway Discord :", error);
+client.on("debug", (info) => {
+  console.log("[DEBUG DISCORD]", info);
+});
+
+client.on("warn", (info) => {
+  console.warn("[WARN DISCORD]", info);
+});
+
+client.on("invalidated", () => {
+  console.error("❌ Session Discord invalidée.");
+});
+
+client.on("shardReady", (shardId) => {
+  console.log(`✅ Gateway connectée — shard ${shardId}`);
+});
+
+client.on("shardResume", (shardId, replayedEvents) => {
+  console.log(
+    `🔄 Gateway reprise — shard ${shardId} — ${replayedEvents} événement(s) rejoué(s)`,
+  );
+});
+
+client.on("shardReconnecting", (shardId) => {
+  console.warn(`🔄 Reconnexion Gateway — shard ${shardId}`);
+});
+
+client.on("shardError", (error, shardId) => {
+  console.error(
+    `❌ Erreur Gateway Discord — shard ${shardId} :`,
+    error,
+  );
 });
 
 client.on("shardDisconnect", (event, shardId) => {
@@ -556,13 +585,17 @@ client.on("shardDisconnect", (event, shardId) => {
   );
 });
 
+client.on("error", (error) => {
+  console.error("❌ Erreur client Discord :", error);
+});
+
 client.login(token).catch((error) => {
   console.error("❌ Connexion Discord impossible :", error);
   process.exit(1);
 });
 
 // Si Discord ne se connecte pas sous 45 secondes,
-// le processus redémarre au lieu de rester bloqué.
+// le processus quitte pour forcer Render à le relancer.
 setTimeout(() => {
   if (!client.isReady()) {
     console.error(
