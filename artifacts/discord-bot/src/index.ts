@@ -546,4 +546,28 @@ createServer((req, res) => {
 });
 
 // ─── LOGIN ───────────────────────────────────────────────
-client.login(token);
+client.on("shardError", (error) => {
+  console.error("❌ Erreur Gateway Discord :", error);
+});
+
+client.on("shardDisconnect", (event, shardId) => {
+  console.error(
+    `❌ Déconnexion Discord — shard ${shardId} — code ${event.code}`,
+  );
+});
+
+client.login(token).catch((error) => {
+  console.error("❌ Connexion Discord impossible :", error);
+  process.exit(1);
+});
+
+// Si Discord ne se connecte pas sous 45 secondes,
+// le processus redémarre au lieu de rester bloqué.
+setTimeout(() => {
+  if (!client.isReady()) {
+    console.error(
+      "❌ Discord toujours déconnecté après 45 secondes. Redémarrage automatique.",
+    );
+    process.exit(1);
+  }
+}, 45_000);
