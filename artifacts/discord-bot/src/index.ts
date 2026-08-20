@@ -545,8 +545,16 @@ createServer((req, res) => {
   console.log(`🌐 HTTP server listening on ${PORT}`);
 });
 
-// ─── LOGIN ───────────────────────────────────────────────
+// ─── LOGIN / DISCORD GATEWAY ─────────────────────────────
+
 client.on("debug", (info) => {
+  // Discord.js peut afficher le token dans son message "Provided token".
+  // On ne l'affiche surtout pas dans les logs Render.
+  if (info.includes("Provided token:")) {
+    console.log("[DEBUG DISCORD] Token fourni.");
+    return;
+  }
+
   console.log("[DEBUG DISCORD]", info);
 });
 
@@ -574,7 +582,7 @@ client.on("shardReconnecting", (shardId) => {
 
 client.on("shardError", (error, shardId) => {
   console.error(
-    `❌ Erreur Gateway Discord — shard ${shardId} :`,
+    `❌ Erreur Gateway Discord — shard ${shardId}:`,
     error,
   );
 });
@@ -589,18 +597,58 @@ client.on("error", (error) => {
   console.error("❌ Erreur client Discord :", error);
 });
 
-client.login(token).catch((error) => {
-  console.error("❌ Connexion Discord impossible :", error);
-  process.exit(1);
-});
+// ─── CONNEXION ───────────────────────────────────────────
 
-// Si Discord ne se connecte pas sous 45 secondes,
-// le processus quitte pour forcer Render à le relancer.
+console.log("🚀 Démarrage de la connexion Discord...");
+console.log(
+  "🔑 Token Discord présent :",
+  Boolean(process.env.DISCORD_BOT_TOKEN),
+);
+
+client.login(token)
+  .then(() => {
+    console.log("✅ client.login() terminé.");
+    console.log(
+      "📡 État Discord :",
+      client.isReady() ? "READY" : "EN ATTENTE",
+    );
+  })
+  .catch((error) => {
+    console.error("❌ Connexion Discord impossible :", error);
+    process.exit(1);
+  });
+
+// ─── WATCHDOG ────────────────────────────────────────────
+// On garde le watchdog pour détecter un blocage de la Gateway.
+// Mais on affiche également l'état exact avant le redémarrage.
+
 setTimeout(() => {
   if (!client.isReady()) {
     console.error(
-      "❌ Discord toujours déconnecté après 45 secondes. Redémarrage automatique.",
+      "❌ Discord n'est toujours pas prêt après 45 secondes.",
     );
+
+    console.error(
+      "📡 État WebSocket :",
+      client.ws.status,
+    );
+
+    console.error(
+      "📡 Client ready :",
+      client.isReady(),
+    );
+
+    console.error(
+      "📡 Guilds en cache :",
+      client.guilds.cache.size,
+    );
+
+    console.error(
+      "🔄 Redémarrage du processus demandé à Render.",
+    );
+
     process.exit(1);
   }
+
+  console.log("✅ Watchdog : Discord est bien connecté.");
 }, 45_000);
