@@ -87,7 +87,7 @@ export async function repondreIA(
 
   try {
     const response = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: "llama-3.3-70b-versatile", // MODIFICATION ICI : Passage sur le modèle valide de Groq
       messages: [{ role: "system", content: systemPrompt }, ...historique],
       max_tokens: 120,
     });
