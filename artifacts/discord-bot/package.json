@@ -9,7 +9,7 @@
     "deploy-commands": "tsx src/deploy-commands.ts"
   },
   "dependencies": {
-    "discord.js": "^14.16.3",
+    "discord.js": "^14.25.1",
     "groq-sdk": "^1.1.2",
     "tsx": "catalog:"
   },
